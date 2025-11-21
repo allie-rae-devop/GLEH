@@ -1,0 +1,15 @@
+Flask
+Flask-SQLAlchemy
+Flask-Login
+Flask-Migrate
+Flask-WTF
+werkzeug
+pytest
+pytest-cov
+Pillow
+waitress
+ebooklib
+beautifulsoup4
+ffmpeg-python
+structlog
+python-dotenv

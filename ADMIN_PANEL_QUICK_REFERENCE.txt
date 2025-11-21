@@ -1,0 +1,210 @@
+================================================================================
+                    ADMIN PANEL - QUICK REFERENCE GUIDE
+================================================================================
+
+EXISTING FUNCTIONS INVENTORY (Currently working):
+================================================================================
+
+TEXTBOOK MANAGEMENT:
+  ✓ process_ebooks()                  - Scan & import all ebooks
+  ✓ extract_epub_metadata()           - Extract title, author, ISBN
+  ✓ fetch_cover_from_google_books()   - Search Google Books API (83% success)
+  ✓ fetch_cover_from_openlibrary()    - Search Open Library API (48% success)
+  ✓ download_cover_image()            - Download & validate cover
+  ✓ generate_cover_image()            - Generate PIL placeholder cover
+
+COURSE MANAGEMENT:
+  ✓ parse_course_metadata()           - Extract course info from HTML
+  ✓ generate_thumbnail()              - Generate video thumbnail via ffmpeg
+  ✓ categories_from_name()            - Auto-assign categories by keywords
+
+DATABASE OPERATIONS:
+  ✓ populate_db.py                    - Main import script
+  ✓ db.create_all()                   - Initialize database tables
+
+================================================================================
+MISSING FUNCTIONS (TO BE CREATED):
+================================================================================
+
+SERVER CONTROL: (app/src/server_control.py)
+  - start_dev_server()                - Flask with debug=True
+  - start_prod_server()               - Flask with debug=False
+  - restart_server()                  - Kill & restart
+  - kill_server()                     - Stop server
+  - get_server_status()               - Running? Uptime? Memory?
+
+DIAGNOSTICS: (app/src/diagnostics.py)
+  - get_application_logs()            - Recent errors/warnings
+  - get_system_status()               - CPU, memory, disk usage
+  - get_file_counts()                 - Count covers, courses, ebooks
+  - validate_data_integrity()         - Check DB vs filesystem sync
+  - get_last_import_status()          - Success/failure counts
+
+ERROR RECOVERY: (app/src/error_recovery.py)
+  - rollback_last_import()            - Undo database changes
+  - reprocess_failed_books()          - Retry cover search
+  - reprocess_failed_courses()        - Retry thumbnail generation
+  - cleanup_orphan_files()            - Remove orphaned covers/thumbnails
+
+ANALYTICS: (app/src/analytics.py)
+  - get_library_statistics()          - Total counts by category
+  - get_cover_statistics()            - % real vs generated covers
+  - export_library_manifest()         - CSV/JSON export
+  - get_import_history()              - Timeline of imports
+
+ADMIN API: (app/src/admin_api.py - Flask routes)
+  - POST /api/admin/scan-ebooks
+  - POST /api/admin/search-covers
+  - POST /api/admin/generate-covers
+  - POST /api/admin/scan-courses
+  - POST /api/admin/generate-thumbnails
+  - POST /api/admin/autocategorize-courses
+  - GET /api/admin/status
+  - POST /api/admin/server/restart
+  - GET /api/admin/diagnostics
+  - POST /api/admin/validate-data
+  - POST /api/admin/cleanup-orphans
+  - GET /api/admin/statistics
+  - POST /api/admin/export-manifest
+
+FRONTEND:
+  - app/templates/admin.html          - Admin dashboard UI
+  - app/static/js/admin.js            - Admin interactions & AJAX
+
+================================================================================
+PROPOSED ADMIN PANEL TABS:
+================================================================================
+
+1. DASHBOARD
+   └─ Overview Cards (library stats, server status, storage)
+
+2. TEXTBOOK MANAGEMENT
+   ├─ Library Overview (table with all books)
+   ├─ Scan Library button → "X new books found"
+   ├─ Search Covers dropdown (Google → OpenLibrary → Archive.org)
+   ├─ Generate Placeholder Covers button
+   └─ Single Book: Edit metadata, search cover, delete, re-process
+
+3. COURSE MANAGEMENT
+   ├─ Courses Library (table with all courses)
+   ├─ Scan Courses button → "X new courses found"
+   ├─ Generate Thumbnails button
+   ├─ Auto-Categorize button
+   └─ Single Course: Edit, regenerate thumbnail, delete, re-process
+
+4. SERVER & DIAGNOSTICS
+   ├─ Server Status Card (Running/Stopped, Mode, Uptime, Memory, CPU)
+   ├─ Control Buttons:
+   │  ├─ Restart Server
+   │  ├─ Start Development Mode
+   │  ├─ Start Production Mode
+   │  └─ Stop Server
+   ├─ Recent Logs (filterable by level)
+   ├─ File System Check (count of all files, missing, orphans)
+   └─ Data Integrity Validation
+
+5. SETTINGS & CONFIGURATION
+   ├─ Import Settings (API timeout, auto-cover-generation)
+   ├─ Database Settings (location, backup, reset)
+   └─ Content Settings (default categories, etc)
+
+6. REPORTS & ANALYTICS
+   ├─ Library Statistics (charts by category)
+   ├─ Cover Statistics (real vs generated %)
+   ├─ Import History (timeline)
+   ├─ Export Manifest (CSV)
+   └─ Backup Database
+
+================================================================================
+ADMIN WORKFLOW SCENARIOS:
+================================================================================
+
+SCENARIO 1: Add New Textbook
+  1. Drop .epub into /epub directory
+  2. Admin Panel → Textbooks → "Scan Library"
+  3. Shows: "1 new book found"
+  4. Click "Import"
+  5. If no cover: Click "Search Covers" → Google Books finds it
+  6. Click "Save" → Book appears in library
+
+SCENARIO 2: Add New Course
+  1. Add folder to /courses with package/index.html
+  2. Admin Panel → Courses → "Scan Courses"
+  3. Shows: "1 new course found" with preview
+  4. Click "Import"
+  5. System generates thumbnail + auto-categorizes
+  6. Course appears in library
+
+SCENARIO 3: Fix Missing Covers
+  1. Admin Panel → Textbooks → See 9 books with generated covers
+  2. Click "Search Covers" → Select "Google Books"
+  3. Click "Retry Failed"
+  4. Shows progress: [5-9 of 9] found
+  5. 4 books remain generated (acceptable)
+
+SCENARIO 4: Debug Performance Issue
+  1. Admin Panel → Server & Diagnostics
+  2. See: Memory 85%, CPU 60%, Uptime 72h
+  3. View Recent Logs → See "API timeout"
+  4. Go to Settings → Increase API timeout
+  5. Click "Restart Server" → Production Mode
+  6. Server restarts smoothly
+
+================================================================================
+IMPLEMENTATION PRIORITY:
+================================================================================
+
+PHASE 1 (Week 1): Essential
+  ✓ Server Control tab (restart, dev/prod)
+  ✓ Scan & Import buttons (ebooks, courses)
+  ✓ Cover search dropdown
+  ✓ Basic statistics widget
+
+PHASE 2 (Week 2-3): Important
+  ✓ Diagnostics tab (logs, validation)
+  ✓ Error recovery functions
+  ✓ Single item management (edit, delete)
+  ✓ Analytics & reports
+
+PHASE 3 (Later): Nice to have
+  ✓ Settings & configuration
+  ✓ Advanced export/backup
+  ✓ Import history timeline
+  ✓ API connectivity testing
+
+================================================================================
+KEY BENEFITS:
+================================================================================
+
+✓ No code/CLI knowledge required for admin tasks
+✓ Reduced token usage after implementation (you can step back)
+✓ Batch operations (all 54 books at once, not one by one)
+✓ Error recovery & self-service troubleshooting
+✓ Real-time visibility into import success/failure
+✓ Self-documenting (admin can see what's failing)
+✓ Scales with library growth (essential for 200+ books)
+✓ Can diagnose issues without needing Claude context
+
+================================================================================
+ESTIMATED TOKEN SAVINGS:
+================================================================================
+
+Without Admin Panel:
+  - Adding 1 textbook = You re-run populate_db.py = ~2000 tokens
+  - Fixing 9 missing covers = You retry search = ~3000 tokens
+  - Adding 1 course = Same re-run = ~2000 tokens
+  - Server restart = You manage manually = 0 tokens but friction
+
+With Admin Panel (Phase 1):
+  - All textbook operations = 1 click, ~0 tokens (admin does it)
+  - All course operations = 1 click, ~0 tokens (admin does it)
+  - Server restart = 1 click, ~0 tokens (automated)
+  - Estimated savings: 3000-5000 tokens per month per content update
+
+With Admin Panel (Full):
+  - Error recovery automated = Save 1000 tokens/month
+  - Diagnostics self-service = Save 2000 tokens/month
+  - Library management = Save 2000 tokens/month
+  - Total potential savings: 7000-10000 tokens/month
+
+================================================================================

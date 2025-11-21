@@ -1,0 +1,172 @@
+<!DOCTYPE html>
+<html lang="en" data-bs-theme="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+    <link rel="icon" href="{{ url_for('static', filename='favicon.ico') }}" type="image/x-icon">
+    <title>Profile - GLEH</title>
+</head>
+<body class="bg-body-tertiary">
+
+    <nav class="navbar navbar-expand-lg navbar-dark bg-dark sticky-top">
+        <div class="container-fluid">
+            <a class="navbar-brand" href="{{ url_for('index') }}">
+                <img src="{{ url_for('static', filename='images/logo.png') }}" alt="GLEH Logo" style="height: 50px;">
+            </a>
+            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
+                <span class="navbar-toggler-icon"></span>
+            </button>
+            <div class="collapse navbar-collapse" id="navbarNav">
+                <ul class="navbar-nav me-auto mb-2 mb-lg-0">
+                    <li class="nav-item"><a class="nav-link" href="{{ url_for('index') }}">Home</a></li>
+                    <li class="nav-item"><a class="nav-link" href="{{ url_for('index') }}#courses">Courses</a></li>
+                    <li class="nav-item"><a class="nav-link" href="{{ url_for('index') }}#ebooks">Textbooks</a></li>
+                    <li class="nav-item"><a class="nav-link active" href="{{ url_for('profile') }}">Profile</a></li>
+                    {% if current_user.is_admin %}
+                    <li class="nav-item"><a class="nav-link" href="{{ url_for('admin_panel') }}">Admin</a></li>
+                    {% endif %}
+                </ul>
+                <div class="d-flex align-items-center gap-2">
+                    <span class="text-white">{{ current_user.username }}</span>
+                    <button id="logout-btn" class="btn btn-sm btn-outline-secondary">Logout</button>
+                </div>
+            </div>
+        </div>
+    </nav>
+
+    <main class="container-lg my-4">
+        <div class="row">
+            <!-- Profile Sidebar -->
+            <div class="col-md-4 mb-4">
+                <div class="card" style="background-color: var(--bs-tertiary-bg);">
+                    <div class="card-body text-center">
+                        <img id="avatar-img" src="" alt="Avatar" class="rounded-circle mb-3" style="width: 150px; height: 150px; object-fit: cover;">
+                        <h3 id="profile-username" class="card-title"></h3>
+                        <p id="profile-pronouns" class="text-muted small"></p>
+                        <p id="profile-joined" class="text-muted small"></p>
+
+                        <button class="btn btn-primary btn-sm w-100 mt-2" data-bs-toggle="modal" data-bs-target="#editProfileModal">
+                            Edit Profile
+                        </button>
+                    </div>
+                </div>
+
+                <div class="card mt-3" style="background-color: var(--bs-tertiary-bg);">
+                    <div class="card-body">
+                        <h5 class="card-title">About Me</h5>
+                        <p id="profile-about" class="card-text"></p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Dashboard Content -->
+            <div class="col-md-8">
+                <!-- Courses in Progress -->
+                <div class="card mb-3" style="background-color: var(--bs-tertiary-bg);">
+                    <div class="card-body">
+                        <h5 class="card-title">Courses in Progress</h5>
+                        <div id="courses-in-progress">
+                            <p class="text-muted">Loading...</p>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Completed Courses -->
+                <div class="card mb-3" style="background-color: var(--bs-tertiary-bg);">
+                    <div class="card-body">
+                        <h5 class="card-title">Completed Courses</h5>
+                        <div id="courses-completed">
+                            <p class="text-muted">Loading...</p>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Currently Reading -->
+                <div class="card mb-3" style="background-color: var(--bs-tertiary-bg);">
+                    <div class="card-body">
+                        <h5 class="card-title">Currently Reading</h5>
+                        <div id="reading-list">
+                            <p class="text-muted">Loading...</p>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- My Notes -->
+                <div class="card mb-3" style="background-color: var(--bs-tertiary-bg);">
+                    <div class="card-body">
+                        <h5 class="card-title">My Notes</h5>
+                        <div id="notes-list">
+                            <p class="text-muted">Loading...</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <!-- Edit Profile Modal -->
+    <div class="modal fade" id="editProfileModal" tabindex="-1">
+        <div class="modal-dialog">
+            <div class="modal-content" style="background-color: var(--bs-tertiary-bg);">
+                <div class="modal-header">
+                    <h5 class="modal-title">Edit Profile</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <!-- Avatar Upload -->
+                    <div class="mb-3">
+                        <label for="avatar-upload" class="form-label">Avatar</label>
+                        <input type="file" class="form-control" id="avatar-upload" accept="image/*">
+                    </div>
+
+                    <!-- About Me -->
+                    <div class="mb-3">
+                        <label for="edit-about" class="form-label">About Me</label>
+                        <textarea class="form-control" id="edit-about" rows="3"></textarea>
+                    </div>
+
+                    <!-- Gender -->
+                    <div class="mb-3">
+                        <label for="edit-gender" class="form-label">Gender</label>
+                        <select class="form-select" id="edit-gender">
+                            <option value="">Prefer not to say</option>
+                            <option value="male">Male</option>
+                            <option value="female">Female</option>
+                            <option value="non-binary">Non-binary</option>
+                        </select>
+                    </div>
+
+                    <!-- Pronouns -->
+                    <div class="mb-3">
+                        <label for="edit-pronouns" class="form-label">Pronouns</label>
+                        <select class="form-select" id="edit-pronouns">
+                            <option value="">Prefer not to say</option>
+                            <option value="he/him">he/him</option>
+                            <option value="she/her">she/her</option>
+                            <option value="they/them">they/them</option>
+                            <option value="custom">Custom</option>
+                        </select>
+                    </div>
+
+                    <!-- Custom Pronouns -->
+                    <div class="mb-3" id="custom-pronouns-wrapper" style="display: none;">
+                        <label for="edit-pronouns-custom" class="form-label">Custom Pronouns</label>
+                        <input type="text" class="form-control" id="edit-pronouns-custom" placeholder="e.g., ze/zir">
+                    </div>
+
+                    <div id="edit-error" class="alert alert-danger" style="display: none;"></div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button type="button" class="btn btn-primary" id="save-profile-btn">Save Changes</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="{{ url_for('static', filename='js/profile.js') }}?v=5"></script>
+</body>
+</html>

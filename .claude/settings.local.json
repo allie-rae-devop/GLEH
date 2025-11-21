@@ -1,0 +1,12 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(ln:*)",
+      "Bash(git rm:*)",
+      "Bash(cd:*)",
+      "Bash(python startup_manager.py:*)"
+    ],
+    "deny": [],
+    "ask": []
+  }
+}

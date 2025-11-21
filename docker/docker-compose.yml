@@ -1,0 +1,211 @@
+version: '3.8'
+
+################################################################################
+# GLEH (Gammons Landing Educational Hub) - Docker Compose Configuration
+################################################################################
+# Production-ready multi-container setup for GLEH
+#
+# Services:
+#   - web: Flask application server
+#   - db: PostgreSQL database
+#   - nginx: Reverse proxy and static file server
+#
+# Usage:
+#   docker-compose up -d           # Start all services
+#   docker-compose down            # Stop all services
+#   docker-compose logs -f         # View logs
+#   docker-compose ps              # List running containers
+#
+# Environment:
+#   Copy .env.example to .env and configure values
+################################################################################
+
+services:
+  # =========================================================================
+  # DATABASE SERVICE
+  # =========================================================================
+  db:
+    image: postgres:15-alpine
+    container_name: gleh-postgres
+    environment:
+      POSTGRES_DB: ${DB_NAME:-gleh_db}
+      POSTGRES_USER: ${DB_USER:-gleh_user}
+      POSTGRES_PASSWORD: ${DB_PASSWORD:-change_me_in_production}
+      POSTGRES_INITDB_ARGS: "--encoding=UTF8 --locale=en_US.UTF-8"
+    ports:
+      - "${DB_PORT:-5432}:5432"
+    volumes:
+      # Database data persistence
+      - postgres_data:/var/lib/postgresql/data
+      # Optional: SQL initialization scripts
+      # - ./db_init:/docker-entrypoint-initdb.d
+    networks:
+      - gleh_network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${DB_USER:-gleh_user}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    restart: unless-stopped
+    deploy:
+      resources:
+        limits:
+          cpus: '1'
+          memory: 512M
+        reservations:
+          cpus: '0.5'
+          memory: 256M
+
+  # =========================================================================
+  # FLASK APPLICATION SERVICE
+  # =========================================================================
+  web:
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile
+      args:
+        PYTHON_VERSION: "3.11"
+    container_name: gleh-web
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      # Flask Configuration
+      FLASK_APP: src/app.py
+      FLASK_ENV: ${FLASK_ENV:-production}
+      FLASK_DEBUG: "0"
+      FLASK_HOST: 0.0.0.0
+      FLASK_PORT: 5000
+
+      # Database Configuration
+      DATABASE_URL: postgresql://${DB_USER:-gleh_user}:${DB_PASSWORD:-change_me_in_production}@db:5432/${DB_NAME:-gleh_db}
+
+      # Storage Configuration
+      STORAGE_TYPE: ${STORAGE_TYPE:-local}
+      CONTENT_DIR: ${CONTENT_DIR:-/data/gleh}
+      LOCAL_COURSES_DIR: ${LOCAL_COURSES_DIR:-/data/gleh/courses}
+      LOCAL_EBOOKS_DIR: ${LOCAL_EBOOKS_DIR:-/data/gleh/ebooks}
+      LOCAL_UPLOADS_DIR: ${LOCAL_UPLOADS_DIR:-/data/gleh/uploads}
+
+      # Security
+      SECRET_KEY: ${SECRET_KEY:-change_me_in_production}
+      SESSION_COOKIE_SECURE: "true"
+      SESSION_COOKIE_HTTPONLY: "true"
+      SESSION_COOKIE_SAMESITE: "Lax"
+
+      # Samba Configuration (for remote storage on network shares)
+      SAMBA_HOST: ${SAMBA_HOST}
+      SAMBA_SHARE: ${SAMBA_SHARE}
+      SAMBA_USERNAME: ${SAMBA_USERNAME}
+      SAMBA_PASSWORD: ${SAMBA_PASSWORD}
+      SAMBA_MOUNT_PATH: ${SAMBA_MOUNT_PATH:-/mnt/gleh-data}
+
+      # Logging
+      LOG_LEVEL: ${LOG_LEVEL:-INFO}
+      LOG_JSON_FORMAT: "true"
+
+    ports:
+      - "127.0.0.1:5000:5000"  # Internal only - use Nginx for external access
+    volumes:
+      # Content storage - supports both local and Samba paths
+      # Local: ../data/gleh
+      # Samba: /mnt/gleh-data (after mounting on host)
+      - ${CONTENT_DIR:-../data/gleh}:/data/gleh:rw
+
+    networks:
+      - gleh_network
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:5000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+    restart: unless-stopped
+    deploy:
+      resources:
+        limits:
+          cpus: '2'
+          memory: 1G
+        reservations:
+          cpus: '1'
+          memory: 512M
+
+  # =========================================================================
+  # NGINX REVERSE PROXY SERVICE
+  # =========================================================================
+  nginx:
+    image: nginx:alpine
+    container_name: gleh-nginx
+    depends_on:
+      - web
+    ports:
+      - "0.0.0.0:${NGINX_PORT:-80}:80"
+      - "0.0.0.0:${NGINX_HTTPS_PORT:-443}:443"
+    volumes:
+      - ./nginx/nginx.conf:/etc/nginx/nginx.conf:ro
+      - ./nginx/conf.d:/etc/nginx/conf.d:ro
+      - ../static:/app/static:ro
+      # Optional: SSL certificates (uncomment for HTTPS)
+      # - ./nginx/ssl:/etc/nginx/ssl:ro
+    networks:
+      - gleh_network
+    healthcheck:
+      test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://localhost/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 10s
+    restart: unless-stopped
+    deploy:
+      resources:
+        limits:
+          cpus: '0.5'
+          memory: 256M
+        reservations:
+          cpus: '0.25'
+          memory: 128M
+
+################################################################################
+# VOLUMES - Persistent Data Storage
+################################################################################
+volumes:
+  postgres_data:
+    driver: local
+    driver_opts:
+      type: none
+      o: bind
+      device: ${DB_DATA_DIR:-../data/postgres}
+
+################################################################################
+# NETWORKS - Inter-service Communication
+################################################################################
+networks:
+  gleh_network:
+    driver: bridge
+    driver_opts:
+      com.docker.network.driver.mtu: 1500
+
+################################################################################
+# NOTES FOR CONFIGURATION
+################################################################################
+#
+# LOCAL DEVELOPMENT:
+#   - Copy .env.example to .env in the docker directory
+#   - Set CONTENT_DIR to your local data directory (e.g., D:\GLEH Data)
+#   - Run: docker-compose up
+#   - Access at http://localhost
+#
+# PRODUCTION DEPLOYMENT:
+#   - Set FLASK_ENV=production
+#   - Set SECRET_KEY to a strong random value
+#   - Configure DATABASE_URL for your database
+#   - Set STORAGE_TYPE and paths appropriately
+#   - Configure SSL certificates for HTTPS
+#   - Use environment variables (not .env file) for secrets
+#
+# SAMBA INTEGRATION:
+#   - Configure mount binds in volumes section above
+#   - Ensure Samba is accessible and mounted on host
+#   - Update SAMBA_* environment variables
+#
+################################################################################

@@ -1,0 +1,216 @@
+# ============================================================================
+# SECURITY & SECRETS - NEVER COMMIT
+# ============================================================================
+.env
+.env.local
+.env.*.local
+.env.*
+*.key
+*.pem
+*.p12
+credentials.json
+secrets/
+
+# ============================================================================
+# LARGE MEDIA & DATA FILES - MASSIVE DISK USAGE
+# ============================================================================
+# Videos
+*.mp4
+*.mkv
+*.avi
+*.mov
+*.flv
+*.wmv
+*.webm
+*.m4v
+
+# Audio
+*.mp3
+*.wav
+*.flac
+*.aac
+*.m4a
+*.ogg
+
+# Images (very large originals)
+*.psd
+*.ai
+*.raw
+
+# Documents
+*.pdf
+*.docx
+*.xlsx
+*.pptx
+*.doc
+*.xls
+
+# Archives (likely contain large files)
+*.zip
+*.rar
+*.7z
+*.tar
+*.tar.gz
+*.tar.bz2
+
+# EPUB & eBooks
+*.epub
+app/epub/
+
+# Course materials & datasets
+app/courses/
+course_materials/
+courses/
+datasets/
+data_files/
+content/
+
+# ============================================================================
+# DATABASE FILES (DATA - don't track)
+# ============================================================================
+*.db
+*.sqlite
+*.sqlite3
+*.dbf
+instance/
+
+# ============================================================================
+# PYTHON ARTIFACTS
+# ============================================================================
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+pip-wheel-metadata/
+share/python-wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+MANIFEST
+
+# ============================================================================
+# VIRTUAL ENVIRONMENTS
+# ============================================================================
+venv/
+ENV/
+env/
+.venv
+.env
+venv_*/
+.python-version
+poetry.lock
+
+# ============================================================================
+# NODE & FRONTEND
+# ============================================================================
+node_modules/
+npm-debug.log
+yarn-error.log
+yarn.lock
+package-lock.json
+dist/
+build/
+.next/
+
+# ============================================================================
+# IDE & EDITOR
+# ============================================================================
+.idea/
+.vscode/settings.local.json
+.vscode/*.code-workspace
+*.swp
+*.swo
+*~
+.DS_Store
+.AppleDouble
+.LSOverride
+*.sublime-project
+*.sublime-workspace
+.project
+.pydevproject
+.settings/
+*.sublime-workspace
+
+# ============================================================================
+# TESTING & COVERAGE
+# ============================================================================
+.pytest_cache/
+.coverage
+htmlcov/
+.coverage.*
+coverage.json
+.tox/
+.hypothesis/
+
+# ============================================================================
+# BUILD & DEPENDENCY ARTIFACTS
+# ============================================================================
+*.pyc
+*.pyo
+*.pyd
+.mypy_cache/
+.dmypy.json
+dmypy.json
+
+# ============================================================================
+# TEMPORARY & BACKUP FILES
+# ============================================================================
+*.bak
+*.tmp
+*.temp
+*.swp
+*.orig
+_rollback_snapshot_*/
+_selective_rollback_snapshot_*/
+prompt4claude.txt
+
+# ============================================================================
+# LOG FILES
+# ============================================================================
+*.log
+logs/
+*.out
+
+# ============================================================================
+# DOCKER
+# ============================================================================
+.docker-data/
+docker/data/
+docker/.env
+docker/.env.local
+docker/.env.*.local
+
+# ============================================================================
+# OS-SPECIFIC
+# ============================================================================
+.DS_Store
+.AppleDouble
+.LSOverride
+Thumbs.db
+ehthumbs.db
+Desktop.ini
+
+# ============================================================================
+# MISC
+# ============================================================================
+.vscode/
+*.pid
+*.seed
+*.seed.*
+.grunt/
+.cache/
+.parcel-cache/
+.eslintcache/

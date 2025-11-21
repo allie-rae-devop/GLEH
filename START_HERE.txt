@@ -1,0 +1,14 @@
+================================================
+GLEH - Quick Start for New Claude Sessions
+================================================
+
+First message to Claude:
+"Read _BOOTSTRAP.md and execute /startup"
+
+That's it! Claude will handle the rest.
+
+For details on workflow, see: _BOOTSTRAP.md
+For file locations, see: PROJECT_INDEX.md
+For current progress, see: PROGRESS_LOG.md
+
+================================================

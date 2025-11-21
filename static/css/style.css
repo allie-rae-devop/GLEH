@@ -1,0 +1,163 @@
+/*
+ * 1. CUSTOM DARK THEME
+ */
+[data-bs-theme="dark"] {
+  /* Page Theme */
+  --bs-body-bg: #121212;
+  --bs-body-bg-rgb: 18, 18, 18;
+  --bs-body-color: #e0e0e0;
+
+  /* Use 'tertiary' for card/header backgrounds */
+  --bs-tertiary-bg: #1a1a1a;
+  --bs-tertiary-bg-rgb: 26, 26, 26;
+
+  --bs-border-color: #2a2a2a;
+  --bs-border-color-translucent: rgba(255, 255, 255, 0.075);
+
+  /* ... (accent colors remain the same) ... */
+}
+
+/*
+ * 2. LAYOUT CUSTOMIZATION VARIABLES
+ */
+:root {
+  /* Featured Sections */
+  --featured-courses-width: 100%;
+  --featured-courses-max-width: 600px;
+  --featured-ebooks-width: 100%;
+  --featured-ebooks-max-width: 600px;
+
+  /* Course Settings */
+  --course-image-width: 150px;
+  --course-title-font-size: 1rem;
+
+  /* Ebook Settings */
+  --ebook-image-width: 120px;
+  --ebook-image-height: 150px;
+  --ebook-title-font-size: 1rem;
+
+  /* Table Settings */
+  --table-row-height: auto;
+  --table-padding: 12px;
+  --table-gap: 0.75rem;
+  --card-background: transparent;
+  --card-border: none;
+}
+
+/*
+ * 3. E-BOOK CARD STYLING
+ */
+.card-ebook-link img {
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+  border: 1px solid var(--bs-border-color);
+}
+
+.card-ebook-link:hover img,
+.card-ebook-link:focus img {
+  transform: scale(1.05);
+  box-shadow: 0 0.5rem 1rem rgba(0, 0, 0, 0.5);
+  border-color: var(--bs-primary);
+}
+
+/*
+ * 4. NEW TABLE STYLING
+ */
+#dashboard-view .row {
+    display: flex;
+    gap: 1rem;
+}
+
+#dashboard-view .col-lg-6 {
+    display: flex;
+    flex-direction: column;
+    flex: 1;
+    min-width: 0;
+}
+
+.content-table {
+    background-color: var(--card-background);
+    border: var(--card-border);
+    border-radius: 0.5rem;
+    overflow: hidden; /* Ensures the border-radius is respected by the table */
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+    width: 100%;
+}
+
+.content-table thead {
+    background-color: transparent !important;
+}
+
+.content-table thead tr {
+    background-color: transparent !important;
+}
+
+.content-table thead th {
+    background-color: transparent !important;
+    padding: 0 !important;
+    width: 100%;
+    text-align: center !important;
+}
+
+.content-table tbody {
+    flex: 1;
+}
+
+.table-title {
+    font-size: 1.5rem;
+    font-weight: bold;
+    text-align: center !important;
+    color: var(--bs-primary);
+    border-bottom: 2px solid var(--bs-primary);
+    padding: 1rem !important;
+    background-color: transparent !important;
+    display: block !important;
+    width: 100%;
+}
+
+.content-table td {
+    vertical-align: middle;
+    padding: 12px;
+}
+
+/* Table body row styling for featured cards */
+.content-table tbody tr {
+    border: none;
+    background: transparent;
+}
+
+.content-table tbody tr:hover {
+    background: transparent;
+}
+
+/* Make course and textbook cards have consistent padding */
+#dashboard-view .col-lg-6 .content-table tbody td {
+    padding-top: 12px;
+    padding-bottom: 12px;
+    padding-left: 12px;
+    padding-right: 12px;
+}
+
+/* Constrain ebook cover images in table rows */
+.content-table tbody td img {
+    width: 100%;
+    height: auto;
+    object-fit: cover;
+}
+
+/* Match course thumbnail height to textbook height (150px) */
+#dashboard-view .col-lg-6:first-child .content-table tbody td img {
+    height: 150px;
+    width: auto;
+}
+
+.minimal-card {
+    background: none;
+    border: none;
+}
+
+.minimal-card .card-title {
+    font-size: 1rem;
+    margin-bottom: 0.25rem;
+}
