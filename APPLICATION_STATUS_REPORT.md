@@ -213,6 +213,18 @@ from flask import Flask, request, jsonify, render_template, abort, url_for, redi
 - Created `_BOOTSTRAP.md` - one-word ("read") session bootstrap
 - **Result:** Device switching now automated and foolproof
 
+### FIXED #10: startup_manager.py Unicode Encoding Error
+**Status:** FIXED
+**Issue:** Windows cp1252 encoding can't display Unicode checkmarks/crosses
+**Symptom:** `UnicodeEncodeError: 'charmap' codec can't encode character '\u2713'`
+**Root Cause:** Using Unicode symbols (checkmark, X, warning) that aren't in cp1252
+**Impact:** startup_manager.py crashed on Windows terminals
+**Fix Applied:** Replaced Unicode symbols with ASCII equivalents in startup_manager.py
+```python
+# Before: print(f"{Colors.GREEN}✓ {text}{Colors.END}")
+# After:  print(f"{Colors.GREEN}[OK] {text}{Colors.END}")
+```
+
 ---
 
 ## 3. High-Priority Issues Found
