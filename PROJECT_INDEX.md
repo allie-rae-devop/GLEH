@@ -42,6 +42,15 @@
 - **commit_and_push.ps1** - Backup to Samba + Git commit + Git push
 - **startup_manager.py** - Session bootstrap automation
 
+### Assets
+- **assets/** - Project screenshots for README gallery
+  - main.png - Main Dashboard / Central Hub
+  - courses.png - Course Library
+  - textbook.png - Textbook Library
+  - course-launch.png - Course Player
+  - user-profile.png - User Profile
+  - admin-panel.png - Admin Panel
+
 ---
 
 ## Current Phase Information

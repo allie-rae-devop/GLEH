@@ -403,6 +403,30 @@ GLEH/
 
 ---
 
+## 📸 Project Gallery
+
+### 🏠 Central Hub
+*The main dashboard providing quick access to featured content and recent activity.*
+![Main Dashboard](assets/main.png)
+
+### 📚 Content Libraries
+*Organized grid views for browsing local courses and e-books.*
+| Course Library | Textbook Library |
+| :---: | :---: |
+| ![Course Library](assets/courses.png) | ![Textbook Library](assets/textbook.png) |
+
+### 🎓 Learning Experience
+*Distraction-free video player with integrated note-taking and progress tracking.*
+![Course Player](assets/course-launch.png)
+
+### ⚙️ Management & Profiles
+*User profiles for tracking personal stats, and a robust Admin Panel for server diagnostics.*
+| User Profile | Admin Panel |
+| :---: | :---: |
+| ![User Profile](assets/user-profile.png) | ![Admin Panel](assets/admin-panel.png) |
+
+---
+
 ## Setup & Configuration
 
 ### Environment Configuration
