@@ -1,3 +1,16 @@
+# Gammons Landing Educational Hub (GLEH)
+
+## 🛠️ Methodology & Architecture
+**Status:** Active Prototype / AI-Assisted Build
+
+This project represents a **"Human-in-the-Loop" AI development workflow**.
+* **Role:** As the Solutions Architect, I defined the feature requirements, data structure, and UI flow.
+* **Implementation:** I utilized Large Language Models (LLMs) for rapid code generation and syntax handling.
+* **Validation:** My focus was on logic verification, debugging integration errors, and code review to ensure the application met the specific constraints of my home lab environment.
+
+*Note: This repository is a working prototype demonstrating rapid tool creation for personal utility.*
+
+---
 # GLEH - Gammons Landing Educational Hub
 
 A production-ready Flask-based educational platform for managing courses and e-books (EPUB/PDF) with flexible storage configuration, Docker deployment, and comprehensive admin tools.
