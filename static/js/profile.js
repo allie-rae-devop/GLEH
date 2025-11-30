@@ -128,12 +128,24 @@ async function loadProfile() {
         const notesDiv = document.getElementById('notes-list');
         if (data.notes.length > 0) {
             notesDiv.innerHTML = '<div class="list-group">' +
-                data.notes.map(note => `
-                    <a href="/course/${note.course_uid}" class="list-group-item list-group-item-action">
-                        <h6 class="mb-1">${note.course_title}</h6>
-                        <p class="mb-1 small text-muted">${note.content}</p>
-                    </a>
-                `).join('') +
+                data.notes.map(note => {
+                    if (note.type === 'course') {
+                        return `
+                            <a href="/course/${note.course_uid}" class="list-group-item list-group-item-action">
+                                <h6 class="mb-1">${note.course_title}</h6>
+                                <p class="mb-1 small text-muted">${note.content}</p>
+                            </a>
+                        `;
+                    } else if (note.type === 'ebook') {
+                        return `
+                            <a href="/textbook/${note.ebook_id}" class="list-group-item list-group-item-action">
+                                <h6 class="mb-1">${note.ebook_title} <span class="badge bg-secondary">Book</span></h6>
+                                <p class="mb-1 small text-muted">${note.content}</p>
+                            </a>
+                        `;
+                    }
+                    return '';
+                }).join('') +
                 '</div>';
         } else {
             notesDiv.innerHTML = '<p class="text-muted">No notes yet</p>';

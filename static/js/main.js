@@ -82,7 +82,7 @@ function createCourseCard(course) {
 function createEbookCard(ebook) {
   return `
   <div class="col">
-    <a href="${ebook.reader_url}" class="card-ebook-link" title="${ebook.title}">
+    <a href="${ebook.path}" class="card-ebook-link" title="${ebook.title}">
       <img src="${ebook.cover_path}"
            class="img-fluid rounded shadow-sm ebook-cover"
            alt="${ebook.title} cover"
@@ -130,7 +130,7 @@ function createEbookRow(ebook) {
   return `
   <tr>
     <td style="width: 120px; text-align: center;">
-      <a href="${ebook.reader_url}" class="card-ebook-link" title="${ebook.title}">
+      <a href="${ebook.path}" class="card-ebook-link" title="${ebook.title}">
         <img src="${ebook.cover_path}"
              class="img-fluid rounded shadow-sm ebook-cover"
              alt="${ebook.title} cover"
@@ -141,7 +141,7 @@ function createEbookRow(ebook) {
     <td>
       <div class="minimal-card">
         <h5 class="card-title">
-          <a href="${ebook.reader_url}" class="text-decoration-none text-body">${ebook.title}</a>
+          <a href="${ebook.path}" class="text-decoration-none text-body">${ebook.title}</a>
         </h5>
       </div>
     </td>

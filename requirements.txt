@@ -8,8 +8,9 @@ pytest
 pytest-cov
 Pillow
 waitress
-ebooklib
-beautifulsoup4
+# ebooklib - REMOVED: Migrated to Calibre-Web for ebook management
+# beautifulsoup4 - REMOVED: No longer needed without ebooklib
 ffmpeg-python
 structlog
 python-dotenv
+requests  # For Calibre-Web API client

@@ -177,6 +177,10 @@
                 height: '100%'
             });
 
+            // Generate locations once for the entire book
+            await book.ready;
+            await book.locations.generate(1024);
+
             // Display book
             if (progress.current_location) {
                 rendition.display(progress.current_location);
@@ -193,12 +197,10 @@
                     const cfi = location.start.cfi;
                     saveProgress(cfi, percent);
 
-                    // Update page indicator
-                    book.locations.generate(1024).then(() => {
-                        const current = book.locations.locationFromCfi(cfi);
-                        const total = book.locations.total;
-                        document.getElementById('page-indicator').textContent = `${current} / ${total}`;
-                    });
+                    // Update page indicator using pre-generated locations
+                    const current = book.locations.locationFromCfi(cfi);
+                    const total = book.locations.total;
+                    document.getElementById('page-indicator').textContent = `${current} / ${total}`;
                 }
             });
         }

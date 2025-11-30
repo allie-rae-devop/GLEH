@@ -10,9 +10,10 @@ from flask import Blueprint, request, jsonify
 from flask_login import login_required, current_user
 from .database import db
 from .models import Course, Ebook, User, LayoutSettings
-from .build import process_ebooks, extract_epub_metadata, fetch_cover_from_google_books, \
-    download_cover_image, generate_cover_image, parse_course_metadata, generate_thumbnail, \
-    categories_from_name
+# REMOVED: Ebook processing functions migrated to Calibre-Web
+# from .build import process_ebooks, extract_epub_metadata, fetch_cover_from_google_books, \
+#     download_cover_image, generate_cover_image
+from .build import parse_course_metadata, generate_thumbnail, categories_from_name
 import hashlib
 
 admin_bp = Blueprint('admin_api', __name__, url_prefix='/api/admin')
@@ -29,141 +30,41 @@ def admin_required(f):
 # ===========================
 # TEXTBOOK OPERATIONS
 # ===========================
+# DEPRECATED: All ebook management migrated to Calibre-Web
+# Use Calibre-Web UI (http://localhost:8083) for adding/managing ebooks
+# Admin panel no longer supports standalone ebook scanning
 
-@admin_bp.route('/scan-ebooks', methods=['POST'])
-@login_required
-@admin_required
-def scan_ebooks():
-    """Scan /epub directory for new EPUB files"""
-    try:
-        from . import app
-        epub_dir = os.path.join(app.config.get('CONTENT_DIR', '.'), 'epub')
-
-        if not os.path.isdir(epub_dir):
-            return jsonify({'error': 'EPUB directory not found'}), 400
-
-        epub_files = [f for f in os.listdir(epub_dir) if f.lower().endswith('.epub')]
-        existing_ids = set(e.uid for e in Ebook.query.all())
-
-        new_count = 0
-        for filename in epub_files:
-            uid = hashlib.md5(filename.encode()).hexdigest()
-            if uid not in existing_ids:
-                new_count += 1
-
-        return jsonify({
-            'total': len(epub_files),
-            'new': new_count,
-            'existing': len(epub_files) - new_count
-        })
-
-    except Exception as e:
-        return jsonify({'error': str(e)}), 500
-
-
-@admin_bp.route('/get-ebooks', methods=['GET'])
-@login_required
-@admin_required
-def get_ebooks():
-    """Get all ebooks from database"""
-    try:
-        ebooks = Ebook.query.all()
-        ebook_list = []
-
-        for ebook in ebooks:
-            # Check if cover exists
-            cover_path = os.path.join(os.path.dirname(__file__), '..', 'static', ebook.cover_path)
-            has_cover = os.path.exists(cover_path)
-            cover_size = os.path.getsize(cover_path) if has_cover else 0
-            is_real = cover_size > 10000 if has_cover else False
-
-            ebook_list.append({
-                'id': ebook.id,
-                'title': ebook.title,
-                'author': 'Unknown',
-                'cover_status': 'found' if is_real else 'generated',
-                'created_at': ebook.id  # placeholder
-            })
-
-        return jsonify({'ebooks': ebook_list})
-
-    except Exception as e:
-        return jsonify({'error': str(e)}), 500
-
-
-@admin_bp.route('/search-covers', methods=['POST'])
-@login_required
-@admin_required
-def search_covers():
-    """Search for covers using specified source"""
-    try:
-        data = request.json
-        source = data.get('source', 'google')
-
-        found = 0
-        failed = 0
-        skipped = 0
-
-        ebooks = Ebook.query.all()
-
-        for ebook in ebooks:
-            cover_path = os.path.join(os.path.dirname(__file__), '..', 'static', ebook.cover_path)
-
-            # Skip if already has real cover
-            if os.path.exists(cover_path) and os.path.getsize(cover_path) > 10000:
-                skipped += 1
-                continue
-
-            # Try to find cover
-            cover_url = None
-
-            if source == 'google':
-                from .extract_metadata import fetch_cover_from_google_books
-                cover_url = fetch_cover_from_google_books(ebook.title)
-            # Add more sources as needed
-
-            if cover_url:
-                if download_cover_image(cover_url, cover_path):
-                    found += 1
-                else:
-                    failed += 1
-            else:
-                failed += 1
-
-        return jsonify({
-            'found': found,
-            'failed': failed,
-            'skipped': skipped
-        })
-
-    except Exception as e:
-        return jsonify({'error': str(e)}), 500
-
-
-@admin_bp.route('/generate-covers', methods=['POST'])
-@login_required
-@admin_required
-def generate_covers():
-    """Generate placeholder covers for books without covers"""
-    try:
-        generated = 0
-        ebooks = Ebook.query.all()
-
-        for ebook in ebooks:
-            cover_path = os.path.join(os.path.dirname(__file__), '..', 'static', ebook.cover_path)
-
-            # Only generate if missing or very small
-            if not os.path.exists(cover_path) or os.path.getsize(cover_path) < 10000:
-                try:
-                    generate_cover_image(ebook.title, cover_path)
-                    generated += 1
-                except:
-                    pass
-
-        return jsonify({'generated': generated})
-
-    except Exception as e:
-        return jsonify({'error': str(e)}), 500
+# @admin_bp.route('/scan-ebooks', methods=['POST'])
+# @login_required
+# @admin_required
+# def scan_ebooks():
+#     """Scan /epub directory for new EPUB files"""
+#     # DEPRECATED: Use Calibre-Web instead
+#     pass
+#
+# @admin_bp.route('/get-ebooks', methods=['GET'])
+# @login_required
+# @admin_required
+# def get_ebooks():
+#     """Get all ebooks from database"""
+#     # DEPRECATED: Use Calibre-Web API instead
+#     pass
+#
+# @admin_bp.route('/search-covers', methods=['POST'])
+# @login_required
+# @admin_required
+# def search_covers():
+#     """Search for covers using specified source"""
+#     # DEPRECATED: Calibre-Web manages covers
+#     pass
+#
+# @admin_bp.route('/generate-covers', methods=['POST'])
+# @login_required
+# @admin_required
+# def generate_covers():
+#     """Generate placeholder covers for books without covers"""
+#     # DEPRECATED: Calibre-Web manages covers
+#     pass
 
 
 # ===========================

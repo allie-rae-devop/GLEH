@@ -45,6 +45,21 @@ class Course(db.Model):
     categories = db.Column(db.String(512))
     thumbnail = db.Column(db.String(512))
 
+    @property
+    def launch_url(self):
+        """Convert absolute file path to web-accessible URL"""
+        if not self.path:
+            return None
+        # Extract the relative path after 'courses/' from the absolute path
+        # Example: J:/courses/CourseName/package/index.html -> CourseName/package/index.html
+        import re
+        # Match the path after 'courses/' (case insensitive for Windows)
+        match = re.search(r'[/\\]courses[/\\](.+)', self.path, re.IGNORECASE)
+        if match:
+            relative_path = match.group(1).replace('\\', '/')
+            return f'/courses/{relative_path}'
+        return self.path
+
     def __repr__(self):
         return f'<Course {self.title}>'
 
@@ -119,6 +134,40 @@ class ReadingProgress(db.Model):
 
     def __repr__(self):
         return f'<ReadingProgress User:{self.user_id} Ebook:{self.ebook_id} {self.progress_percent}%>'
+
+class EbookNote(db.Model):
+    """
+    Stores a user's personal notes for a specific ebook.
+    Note: ebook_id is a string like 'calibre-4' since books come from Calibre-Web, not local database.
+    """
+    id = db.Column(db.Integer, primary_key=True)
+    content = db.Column(db.Text, nullable=False)
+    user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
+    ebook_id = db.Column(db.String(255), nullable=False)  # e.g., 'calibre-4'
+
+    # Ensure a user can only have one note entry per ebook
+    __table_args__ = (db.UniqueConstraint('user_id', 'ebook_id', name='_user_ebook_note_uc'),)
+
+    def __repr__(self):
+        return f'<EbookNote User:{self.user_id} Ebook:{self.ebook_id}>'
+
+class CalibreReadingProgress(db.Model):
+    """
+    Tracks a user's reading progress for Calibre-Web ebooks.
+    Stores status (in_progress, completed) and last read timestamp.
+    """
+    id = db.Column(db.Integer, primary_key=True)
+    user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
+    ebook_id = db.Column(db.String(255), nullable=False)  # e.g., 'calibre-4'
+    status = db.Column(db.String(50), default='in_progress')  # 'in_progress' or 'completed'
+    progress_percent = db.Column(db.Integer, default=0)  # 0-100 (optional, for future use)
+    last_read = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+
+    # Ensure a user can only have one progress entry per ebook
+    __table_args__ = (db.UniqueConstraint('user_id', 'ebook_id', name='_user_calibre_ebook_uc'),)
+
+    def __repr__(self):
+        return f'<CalibreReadingProgress User:{self.user_id} Ebook:{self.ebook_id} Status:{self.status}>'
 
 class LayoutSettings(db.Model):
     """

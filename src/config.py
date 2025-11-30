@@ -50,15 +50,37 @@ class DevelopmentConfig(Config):
     """Development configuration."""
     DEBUG = True
     TESTING = False
-    # Use a fixed key for development so sessions persist across restarts
-    SECRET_KEY = os.environ.get('SECRET_KEY') or 'dev-secret-key-do-not-use-in-production'
-    basedir = os.path.abspath(os.path.dirname(__file__))
-    SQLALCHEMY_DATABASE_URI = os.environ.get('DATABASE_URL') or \
-        'sqlite:///' + os.path.join(basedir, '..', 'database.db')
 
-    # Development content directory (go up 1 level: src -> root)
-    CONTENT_DIR = os.environ.get('CONTENT_DIR') or \
-        os.path.abspath(os.path.join(basedir, '..'))
+    # All configuration should come from environment variables (.env file)
+    # No hardcoded defaults - deployment environment must provide these values
+    SECRET_KEY = os.environ.get('SECRET_KEY')
+    if not SECRET_KEY:
+        raise ValueError("SECRET_KEY environment variable must be set in .env file")
+
+    # WORKAROUND: Windows paths with spaces break SQLite URL parsing
+    # Build the database URI programmatically using absolute path
+    db_url = os.environ.get('DATABASE_URL')
+    if not db_url:
+        raise ValueError("DATABASE_URL environment variable must be set in .env file")
+
+    # If it's a SQLite database, build the path manually to handle spaces
+    if db_url.startswith('sqlite:///'):
+        # Get absolute path to instance/database.db relative to this file
+        basedir = os.path.abspath(os.path.dirname(__file__))
+        db_path = os.path.join(basedir, '..', 'instance', 'database.db')
+        db_path = os.path.abspath(db_path)
+        # Use file:/// URI scheme which properly handles spaces
+        SQLALCHEMY_DATABASE_URI = f'sqlite:///{db_path}'
+    else:
+        SQLALCHEMY_DATABASE_URI = db_url
+
+    CONTENT_DIR = os.environ.get('CONTENT_DIR')
+    if not CONTENT_DIR:
+        raise ValueError("CONTENT_DIR environment variable must be set in .env file")
+
+    # Calibre-Web integration
+    CALIBRE_WEB_URL = os.environ.get('CALIBRE_WEB_URL', 'http://localhost:8083')
+    CALIBRE_LIBRARY_PATH = os.environ.get('CALIBRE_LIBRARY_PATH')
 
 
 class ProductionConfig(Config):
@@ -66,24 +88,43 @@ class ProductionConfig(Config):
     DEBUG = False
     TESTING = False
 
-    # In production, SECRET_KEY should be set via environment variable
-    # If not set, will inherit from Config class (which generates a random key)
-    # For production deployments, always set SECRET_KEY in environment!
+    # All configuration should come from environment variables (.env file)
+    # No hardcoded defaults - production must provide these values
+    SECRET_KEY = os.environ.get('SECRET_KEY')
+    if not SECRET_KEY:
+        raise ValueError(
+            "SECRET_KEY environment variable must be set in production"
+        )
+
+    SQLALCHEMY_DATABASE_URI = os.environ.get('DATABASE_URL')
+    if not SQLALCHEMY_DATABASE_URI:
+        raise ValueError(
+            "DATABASE_URL environment variable must be set in production"
+        )
+
+    CONTENT_DIR = os.environ.get('CONTENT_DIR')
+    if not CONTENT_DIR:
+        raise ValueError(
+            "CONTENT_DIR environment variable must be set in production"
+        )
+
+    # Calibre-Web integration
+    CALIBRE_WEB_URL = os.environ.get('CALIBRE_WEB_URL')
+    if not CALIBRE_WEB_URL:
+        raise ValueError(
+            "CALIBRE_WEB_URL must be set in production .env file"
+        )
+    CALIBRE_LIBRARY_PATH = os.environ.get('CALIBRE_LIBRARY_PATH')
 
     # Session Security - Production Hardening (OWASP A02:2021, A07:2021)
-    SESSION_COOKIE_SECURE = True        # Enforce HTTPS-only transmission (prevents MitM session hijacking)
-    SESSION_COOKIE_HTTPONLY = True      # Prevent JavaScript access (already set in base, reinforced here)
-    SESSION_COOKIE_SAMESITE = 'Lax'     # CSRF protection (already set in base, reinforced here)
-    PERMANENT_SESSION_LIFETIME = 3600   # 1-hour timeout (least privilege principle)
-
-    # Production database
-    basedir = os.path.abspath(os.path.dirname(__file__))
-    SQLALCHEMY_DATABASE_URI = os.environ.get('DATABASE_URL') or \
-        os.environ.get('PROD_DATABASE_URL') or \
-        'sqlite:///' + os.path.join(basedir, '..', 'database.db')  # Fallback to dev DB
-
-    # Production content directory (must be set via CONTENT_DIR environment variable)
-    CONTENT_DIR = os.environ.get('CONTENT_DIR') or '/data/gleh'  # Docker/Proxmox path
+    # Enforce HTTPS-only transmission (prevents MitM session hijacking)
+    SESSION_COOKIE_SECURE = True
+    # Prevent JavaScript access (already set in base, reinforced here)
+    SESSION_COOKIE_HTTPONLY = True
+    # CSRF protection (already set in base, reinforced here)
+    SESSION_COOKIE_SAMESITE = 'Lax'
+    # 1-hour timeout (least privilege principle)
+    PERMANENT_SESSION_LIFETIME = 3600
 
 
 class TestingConfig(Config):

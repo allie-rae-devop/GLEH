@@ -1,4 +1,12 @@
 import os
+from dotenv import load_dotenv
+
+# CRITICAL: Load .env FIRST before any other imports
+# Config classes validate environment variables at import time
+root_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), '..'))
+load_dotenv(os.path.join(root_dir, '.env'))
+
+# Now import everything else after .env is loaded
 import re
 import time
 import uuid
@@ -8,24 +16,20 @@ import io
 from datetime import datetime, timedelta
 from collections import defaultdict
 from werkzeug.utils import secure_filename
-from flask import Flask, request, jsonify, render_template, abort, url_for, redirect, session, g, send_file, send_from_directory
+from werkzeug.exceptions import NotFound
+from flask import Flask, request, jsonify, render_template, abort, url_for, redirect, session, g, send_file, send_from_directory, make_response
 from flask_migrate import Migrate
 from flask_login import LoginManager, login_user, logout_user, login_required, current_user
 from flask_wtf.csrf import generate_csrf, CSRFError
 from PIL import Image
-from dotenv import load_dotenv
 from .database import db
 
 # --- App Initialization and Configuration ---
-# Get the root directory (parent of src/)
-root_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), '..'))
-
-# Load environment variables from .env file
-load_dotenv(os.path.join(root_dir, '.env'))
 
 app = Flask(__name__,
             template_folder=os.path.join(root_dir, 'templates'),
-            static_folder=os.path.join(root_dir, 'static'))
+            static_folder=os.path.join(root_dir, 'static'),
+            instance_path=os.path.join(root_dir, 'instance'))
 
 # Load configuration based on environment
 env = os.environ.get('FLASK_ENV', 'development')
@@ -55,8 +59,9 @@ csrf = CSRFProtect(app)
 login_manager = LoginManager(app)
 login_manager.login_view = 'index'
 
-from .models import User, Course, Ebook, CourseProgress, CourseNote, ReadingProgress
+from .models import User, Course, Ebook, CourseProgress, CourseNote, ReadingProgress, EbookNote, CalibreReadingProgress
 from .admin_api import admin_bp
+from .calibre_client import get_calibre_client
 
 @login_manager.user_loader
 def load_user(user_id):
@@ -397,6 +402,53 @@ def course_page(uid):
     course = Course.query.filter_by(uid=uid).first_or_404()
     return render_template('course.html', course=course)
 
+@app.route('/textbook/<book_id>')
+def textbook_page(book_id):
+    """Serves the dedicated launch page for a single textbook from Calibre-Web."""
+    from .models import EbookNote
+
+    # Fetch book details from Calibre-Web
+    calibre_client = get_calibre_client()
+
+    # Extract numeric ID from book_id (e.g., 'calibre-4' -> 4)
+    numeric_id = int(book_id.replace('calibre-', ''))
+    book = calibre_client.get_book(numeric_id)
+
+    if not book:
+        abort(404)
+
+    # Get user note if logged in
+    user_note = ''
+    if current_user.is_authenticated:
+        note = EbookNote.query.filter_by(
+            user_id=current_user.id,
+            ebook_id=book_id
+        ).first()
+        if note:
+            user_note = note.content
+
+        # Track reading progress - create or update entry
+        progress = CalibreReadingProgress.query.filter_by(
+            user_id=current_user.id,
+            ebook_id=book_id
+        ).first()
+
+        if not progress:
+            # Create new progress entry
+            progress = CalibreReadingProgress(
+                user_id=current_user.id,
+                ebook_id=book_id,
+                status='in_progress'
+            )
+            db.session.add(progress)
+        else:
+            # Update last_read timestamp
+            progress.last_read = datetime.utcnow()
+
+        db.session.commit()
+
+    return render_template('textbook.html', book=book, user_note=user_note)
+
 @app.route('/courses/<path:filepath>')
 def serve_course_files(filepath):
     """Serves course files from the courses directory."""
@@ -426,7 +478,6 @@ app.register_blueprint(admin_bp)
 @app.route('/api/content')
 def get_content():
     all_courses = Course.query.all()
-    all_ebooks = Ebook.query.all()
     content_list = []
 
     user_progress = {}
@@ -437,6 +488,7 @@ def get_content():
         user_progress = {p.course_id: p.status for p in progress_records}
         user_notes = {n.course_id: n.content for n in note_records}
 
+    # Add courses to content list
     for course in all_courses:
         content_list.append({
             'type': 'course', 'uid': course.uid, 'title': course.title,
@@ -447,30 +499,25 @@ def get_content():
             'user_note': user_notes.get(course.id, '')
         })
 
-    for ebook in all_ebooks:
-        # Use actual cover if available and not a broken placeholder (>= 1KB)
-        # Otherwise fall back to default-book.jpg
-        cover_path = ebook.cover_path
-        cover_url = url_for('static', filename='images/default-book.jpg')  # default fallback
+    # Fetch ebooks from Calibre-Web instead of local database
+    try:
+        calibre_client = get_calibre_client()
+        all_ebooks = calibre_client.get_featured_books(count=100)  # Get all books for homepage
 
-        if cover_path:
-            # Static files are in app/src/../static/ relative to app.root_path
-            static_dir = os.path.join(app.root_path, '..', 'static')
-            full_path = os.path.join(static_dir, cover_path)
-            try:
-                # Check if file exists and is not a broken placeholder (>= 1KB)
-                if os.path.exists(full_path) and os.path.getsize(full_path) >= 1024:
-                    cover_url = url_for('static', filename=cover_path)
-            except (OSError, ValueError):
-                # If there's any error accessing the file, use default
-                pass
-        content_list.append({
-            'type': 'ebook', 'uid': ebook.uid, 'title': ebook.title,
-            'path': ebook.path,
-            'reader_url': url_for('ebook_reader', uid=ebook.uid),
-            'cover_path': cover_url,
-            'categories': ebook.categories.split(',') if ebook.categories else [],
-        })
+        for ebook in all_ebooks:
+            content_list.append({
+                'type': 'ebook',
+                'uid': ebook['uid'],
+                'title': ebook['title'],
+                'author': ebook.get('author', 'Unknown'),
+                'path': url_for('textbook_page', book_id=ebook['uid']),  # Link to launch page
+                'reader_url': ebook.get('reader_url'),  # Direct link to Calibre-Web reader
+                'cover_path': ebook.get('cover_url'),  # Direct URL to Calibre-Web cover
+                'categories': ebook.get('categories', []),
+            })
+    except Exception as e:
+        # Log error but don't fail - just return courses without ebooks
+        log.error(f"Failed to fetch books from Calibre-Web: {e}")
 
     return jsonify({'content': content_list})
 
@@ -507,6 +554,30 @@ def update_note():
         note.content = data.get('content', '')
     else:
         note = CourseNote(user_id=current_user.id, course_id=course.id, content=data.get('content', ''))
+        db.session.add(note)
+    db.session.commit()
+    return jsonify({'message': 'Note saved successfully.'})
+
+# --- Ebook Note API Endpoints ---
+
+@app.route('/api/textbook/<book_id>/note', methods=['GET'])
+@login_required
+def get_ebook_note(book_id):
+    from .models import EbookNote
+    note = EbookNote.query.filter_by(user_id=current_user.id, ebook_id=book_id).first()
+    return jsonify({'content': note.content if note else ''})
+
+@app.route('/api/textbook/note', methods=['POST'])
+@login_required
+def update_ebook_note():
+    from .models import EbookNote
+    data = request.get_json()
+    book_id = data.get('book_id')
+    note = EbookNote.query.filter_by(user_id=current_user.id, ebook_id=book_id).first()
+    if note:
+        note.content = data.get('content', '')
+    else:
+        note = EbookNote(user_id=current_user.id, ebook_id=book_id, content=data.get('content', ''))
         db.session.add(note)
     db.session.commit()
     return jsonify({'message': 'Note saved successfully.'})
@@ -620,6 +691,21 @@ def check_session():
         }), 200
     return jsonify({'is_authenticated': False}), 401
 
+@app.route('/auth/check')
+def nginx_auth_check():
+    """
+    Nginx auth_request endpoint for Calibre-Web SSO.
+    Returns 200 with X-Remote-User header if authenticated, 401 if not.
+    """
+    if current_user.is_authenticated:
+        # Return 200 with username header for Calibre-Web
+        response = make_response('', 200)
+        response.headers['X-Remote-User'] = current_user.username
+        return response
+    else:
+        # Return 401 - Nginx will redirect to login
+        return make_response('Unauthorized', 401)
+
 # --- User Profile Routes ---
 
 @app.route('/profile')
@@ -660,23 +746,65 @@ def get_profile():
         course = note.course
         if course:
             notes_data.append({
+                'type': 'course',
                 'course_uid': course.uid,
                 'course_title': course.title,
                 'content': note.content[:100] + '...' if len(note.content) > 100 else note.content
             })
 
-    # Get reading progress - relationships are auto-joined via lazy='joined'
-    reading_progress = ReadingProgress.query.filter_by(user_id=current_user.id).all()
+    # Get ebook notes from Calibre-Web books
+    ebook_notes = EbookNote.query.filter_by(user_id=current_user.id).all()
+    for note in ebook_notes:
+        # Fetch book title from Calibre-Web
+        try:
+            calibre_client = get_calibre_client()
+            # Extract numeric ID from ebook_id (e.g., 'calibre-4' -> 4)
+            numeric_id = int(note.ebook_id.replace('calibre-', ''))
+            book = calibre_client.get_book(numeric_id)
+            if book:
+                notes_data.append({
+                    'type': 'ebook',
+                    'ebook_id': note.ebook_id,
+                    'ebook_title': book['title'],
+                    'content': note.content[:100] + '...' if len(note.content) > 100 else note.content
+                })
+        except Exception as e:
+            log.warning(f"Failed to fetch book title for {note.ebook_id}: {e}")
+            # Still show the note even if we can't fetch the title
+            notes_data.append({
+                'type': 'ebook',
+                'ebook_id': note.ebook_id,
+                'ebook_title': f'Book {note.ebook_id}',
+                'content': note.content[:100] + '...' if len(note.content) > 100 else note.content
+            })
+
+    # Get Calibre-Web reading progress
+    calibre_progress = CalibreReadingProgress.query.filter_by(user_id=current_user.id).all()
     reading_list = []
-    for rp in reading_progress:
-        # Ebook is already loaded via eager-loading, no additional query
-        ebook = rp.ebook
-        if ebook:
+    for progress in calibre_progress:
+        # Fetch book title from Calibre-Web
+        try:
+            calibre_client = get_calibre_client()
+            # Extract numeric ID from ebook_id (e.g., 'calibre-4' -> 4)
+            numeric_id = int(progress.ebook_id.replace('calibre-', ''))
+            book = calibre_client.get_book(numeric_id)
+            if book:
+                reading_list.append({
+                    'uid': progress.ebook_id,
+                    'title': book['title'],
+                    'progress': progress.progress_percent,
+                    'status': progress.status,
+                    'last_read': progress.last_read.isoformat() if progress.last_read else None
+                })
+        except Exception as e:
+            log.warning(f"Failed to fetch book title for {progress.ebook_id}: {e}")
+            # Still show the entry even if we can't fetch the title
             reading_list.append({
-                'uid': ebook.uid,
-                'title': ebook.title,
-                'progress': rp.progress_percent,
-                'last_read': rp.last_read.isoformat() if rp.last_read else None
+                'uid': progress.ebook_id,
+                'title': f'Book {progress.ebook_id}',
+                'progress': progress.progress_percent,
+                'status': progress.status,
+                'last_read': progress.last_read.isoformat() if progress.last_read else None
             })
 
     return jsonify({
@@ -852,172 +980,21 @@ def serve_avatar(filename):
     return send_from_directory(avatar_dir, filename)
 
 # --- Ebook Reader Routes ---
+# MIGRATED TO CALIBRE-WEB: Custom ebook reader replaced by Calibre-Web with Nginx SSO
 
 @app.route('/reader/<uid>')
-@login_required
 def ebook_reader(uid):
-    """Ebook reader page"""
-    ebook = Ebook.query.filter_by(uid=uid).first_or_404()
+    """Redirect old ebook reader URLs to Calibre-Web"""
+    # For now, redirect to Calibre-Web home
+    # TODO: Map ebook UID to Calibre book ID for direct book linking
+    return redirect('/calibre/')
 
-    # Get or create reading progress
-    progress = ReadingProgress.query.filter_by(user_id=current_user.id, ebook_id=ebook.id).first()
-    if not progress:
-        progress = ReadingProgress(user_id=current_user.id, ebook_id=ebook.id)
-        db.session.add(progress)
-        db.session.commit()
+# DEPRECATED: Reading progress now handled by Calibre-Web natively
+# Removed routes - reading progress is managed by Calibre-Web's built-in system
 
-    return render_template('reader.html', ebook=ebook, progress=progress)
-
-@app.route('/api/reading-progress/<uid>', methods=['GET'])
-@login_required
-def get_reading_progress(uid):
-    """Get reading progress for an ebook"""
-    ebook = Ebook.query.filter_by(uid=uid).first_or_404()
-    progress = ReadingProgress.query.filter_by(user_id=current_user.id, ebook_id=ebook.id).first()
-
-    if not progress:
-        return jsonify({'current_location': None, 'progress_percent': 0})
-
-    return jsonify({
-        'current_location': progress.current_location,
-        'progress_percent': progress.progress_percent,
-        'last_read': progress.last_read.isoformat() if progress.last_read else None
-    })
-
-@app.route('/api/reading-progress/<uid>', methods=['POST'])
-@csrf.exempt
-@login_required
-def save_reading_progress(uid):
-    """Save reading progress for an ebook"""
-    ebook = Ebook.query.filter_by(uid=uid).first_or_404()
-    data = request.get_json()
-
-    progress = ReadingProgress.query.filter_by(user_id=current_user.id, ebook_id=ebook.id).first()
-    if not progress:
-        progress = ReadingProgress(user_id=current_user.id, ebook_id=ebook.id)
-        db.session.add(progress)
-
-    if 'current_location' in data:
-        progress.current_location = data['current_location']
-
-    if 'progress_percent' in data:
-        progress.progress_percent = data['progress_percent']
-
-    progress.last_read = datetime.utcnow()
-    db.session.commit()
-
-    return jsonify({'message': 'Progress saved'})
-
-@app.route('/api/ebook/<uid>')
-@app.route('/api/ebook/<uid>/')
-@app.route('/api/ebook/<uid>/<path:inner_path>')
-@login_required
-def get_ebook_file(uid, inner_path=None):
-    """Serve the ebook file or files from within EPUB archives"""
-    # Debug logging
-    with open('ebook_debug.log', 'a') as f:
-        f.write(f"\n=== REQUEST at {datetime.now()} ===\n")
-        f.write(f"UID: {uid}\n")
-        f.write(f"Inner path: {inner_path}\n")
-        f.flush()
-
-    ebook = Ebook.query.filter_by(uid=uid).first_or_404()
-
-    # Get the file path (may be absolute or relative)
-    file_path = ebook.path
-
-    # If the path is relative, make it absolute relative to CONTENT_DIR
-    if not os.path.isabs(file_path):
-        content_dir = os.environ.get('CONTENT_DIR', os.getcwd())
-        file_path = os.path.join(content_dir, file_path)
-
-    # Normalize the path
-    file_path = os.path.abspath(file_path)
-
-    # Security: ensure the path is within the content directory
-    content_dir = os.path.abspath(os.environ.get('CONTENT_DIR', os.getcwd()))
-    file_path_normalized = os.path.normpath(file_path)
-    content_dir_normalized = os.path.normpath(content_dir)
-
-    try:
-        rel_path = os.path.relpath(file_path_normalized, content_dir_normalized)
-        if rel_path.startswith('..'):
-            print(f"DEBUG: Path traversal attempt blocked - {rel_path}")
-            abort(403)
-    except ValueError as e:
-        # On Windows, relpath raises ValueError if paths are on different drives
-        # In this case, check if the file_path starts with content_dir
-        print(f"DEBUG: ValueError in relpath - {e}")
-        print(f"DEBUG: file_path_normalized = {file_path_normalized}")
-        print(f"DEBUG: content_dir_normalized = {content_dir_normalized}")
-        if not file_path_normalized.lower().startswith(content_dir_normalized.lower()):
-            print(f"DEBUG: File path not within content directory")
-            abort(403)
-
-    # Check if file exists
-    if not os.path.exists(file_path):
-        abort(404)
-
-    # If requesting a file within the EPUB (e.g., META-INF/container.xml)
-    if inner_path:
-        # Only EPUB files (ZIP archives) support inner paths
-        if not file_path.lower().endswith('.epub'):
-            abort(404)
-
-        try:
-            with zipfile.ZipFile(file_path, 'r') as zip_ref:
-                # Security: prevent path traversal
-                inner_path = inner_path.replace('\\', '/')
-                if inner_path.startswith('/') or '..' in inner_path:
-                    abort(403)
-
-                # Check if file exists in the ZIP before reading
-                if inner_path not in zip_ref.namelist():
-                    print(f"DEBUG: File not found in EPUB - {inner_path}")
-                    abort(404)
-
-                file_data = zip_ref.read(inner_path)
-
-                # Determine MIME type
-                mime_type = 'application/octet-stream'
-                if inner_path.endswith('.xml'):
-                    mime_type = 'application/xml'
-                elif inner_path.endswith('.html') or inner_path.endswith('.htm'):
-                    mime_type = 'text/html'
-                elif inner_path.endswith('.css'):
-                    mime_type = 'text/css'
-                elif inner_path.endswith('.js'):
-                    mime_type = 'application/javascript'
-                elif inner_path.endswith('.png'):
-                    mime_type = 'image/png'
-                elif inner_path.endswith('.jpg') or inner_path.endswith('.jpeg'):
-                    mime_type = 'image/jpeg'
-                elif inner_path.endswith('.svg'):
-                    mime_type = 'image/svg+xml'
-
-                return send_file(io.BytesIO(file_data), mimetype=mime_type, as_attachment=False, download_name=inner_path.split('/')[-1])
-        except KeyError as e:
-            print(f"DEBUG: File not found in EPUB - {inner_path}")
-            abort(404)
-        except zipfile.BadZipFile as e:
-            print(f"DEBUG: Bad EPUB file - {file_path}")
-            abort(400)
-        except Exception as e:
-            # Write error to file for debugging
-            import sys
-            with open('ebook_error.log', 'a') as f:
-                f.write(f"\n=== ERROR at {datetime.now()} ===\n")
-                f.write(f"UID: {uid}\n")
-                f.write(f"Inner path: {inner_path}\n")
-                f.write(f"File path: {file_path}\n")
-                f.write(f"Error: {str(e)}\n")
-                traceback.print_exc(file=f)
-            print(f"DEBUG: Ebook endpoint error - {str(e)}", file=sys.stderr, flush=True)
-            traceback.print_exc()
-            abort(500)
-
-    # Serve the full ebook file
-    return send_file(file_path, as_attachment=False, mimetype='application/octet-stream')
+# DEPRECATED: Ebook file serving now handled by Calibre-Web
+# Removed 200+ lines of custom EPUB parsing, ZIP file handling, and MIME type detection
+# Calibre-Web provides superior ebook serving with proper caching, format conversion, etc.
 
 # --- Main Execution ---
 if __name__ == '__main__':

@@ -17,8 +17,9 @@ import ffmpeg
 import urllib.request
 import urllib.error
 import urllib.parse
-from ebooklib import epub, ITEM_IMAGE
-from bs4 import BeautifulSoup
+# REMOVED: ebooklib and BeautifulSoup - Migrated to Calibre-Web for ebook management
+# from ebooklib import epub, ITEM_IMAGE
+# from bs4 import BeautifulSoup
 from PIL import Image, ImageDraw, ImageFont
 from flask_migrate import upgrade as db_upgrade # Import upgrade command
 
@@ -255,133 +256,136 @@ def generate_cover_image(title, save_path):
 
     img.save(save_path)
 
-def extract_epub_metadata(epub_path):
-    """
-    Extract metadata from an EPUB file.
-    Returns: dict with title, author, isbn
-    """
-    metadata = {
-        'title': os.path.splitext(os.path.basename(epub_path))[0],
-        'author': None,
-        'isbn': None
-    }
+# REMOVED: Migrated to Calibre-Web for ebook management
+# def extract_epub_metadata(epub_path):
+#     """
+#     Extract metadata from an EPUB file.
+#     Returns: dict with title, author, isbn
+#     """
+#     metadata = {
+#         'title': os.path.splitext(os.path.basename(epub_path))[0],
+#         'author': None,
+#         'isbn': None
+#     }
+#
+#     try:
+#         book = epub.read_epub(epub_path)
+#
+#         # Extract title
+#         if title := book.get_metadata('DC', 'title'):
+#             if isinstance(title, list) and title:
+#                 title_val = title[0]
+#             else:
+#                 title_val = title
+#
+#             # Handle tuples from ebooklib
+#             if isinstance(title_val, tuple):
+#                 metadata['title'] = title_val[0]
+#             else:
+#                 metadata['title'] = str(title_val)
+#
+#         # Extract author
+#         if author := book.get_metadata('DC', 'creator'):
+#             if isinstance(author, list) and author:
+#                 author_val = author[0]
+#             else:
+#                 author_val = author
+#
+#             # Handle tuples from ebooklib
+#             if isinstance(author_val, tuple):
+#                 metadata['author'] = author_val[0]
+#             else:
+#                 metadata['author'] = str(author_val)
+#
+#         # Try to extract ISBN from identifiers
+#         if identifiers := book.get_metadata('DC', 'identifier'):
+#             if isinstance(identifiers, list):
+#                 for identifier in identifiers:
+#                     if isinstance(identifier, tuple):
+#                         id_type, id_value = identifier
+#                         if 'isbn' in str(id_type).lower():
+#                             clean_isbn = str(id_value).replace('-', '')
+#                             if len(clean_isbn) in [10, 13]:
+#                                 metadata['isbn'] = clean_isbn
+#                                 break
+#
+#     except Exception:
+#         pass
+#
+#     return metadata
 
-    try:
-        book = epub.read_epub(epub_path)
 
-        # Extract title
-        if title := book.get_metadata('DC', 'title'):
-            if isinstance(title, list) and title:
-                title_val = title[0]
-            else:
-                title_val = title
-
-            # Handle tuples from ebooklib
-            if isinstance(title_val, tuple):
-                metadata['title'] = title_val[0]
-            else:
-                metadata['title'] = str(title_val)
-
-        # Extract author
-        if author := book.get_metadata('DC', 'creator'):
-            if isinstance(author, list) and author:
-                author_val = author[0]
-            else:
-                author_val = author
-
-            # Handle tuples from ebooklib
-            if isinstance(author_val, tuple):
-                metadata['author'] = author_val[0]
-            else:
-                metadata['author'] = str(author_val)
-
-        # Try to extract ISBN from identifiers
-        if identifiers := book.get_metadata('DC', 'identifier'):
-            if isinstance(identifiers, list):
-                for identifier in identifiers:
-                    if isinstance(identifier, tuple):
-                        id_type, id_value = identifier
-                        if 'isbn' in str(id_type).lower():
-                            clean_isbn = str(id_value).replace('-', '')
-                            if len(clean_isbn) in [10, 13]:
-                                metadata['isbn'] = clean_isbn
-                                break
-
-    except Exception:
-        pass
-
-    return metadata
-
-
-def process_ebooks(epub_dir):
-    """Scans for .epub files, extracts or generates covers, and returns a list of metadata."""
-    ebook_metadata_list = []
-    if not os.path.isdir(epub_dir):
-        return ebook_metadata_list
-
-    COVER_SAVE_DIR = os.path.join(os.path.dirname(__file__), '..', 'static', 'ebook_covers')
-    os.makedirs(COVER_SAVE_DIR, exist_ok=True)
-
-    print("\n--- Processing E-books ---")
-    for filename in os.listdir(epub_dir):
-        if filename.lower().endswith('.epub'):
-            clean_title = os.path.splitext(filename)[0].replace('_', ' ').title()
-            epub_path = os.path.join(epub_dir, filename)
-            uid = hashlib.md5(filename.encode()).hexdigest()
-
-            cover_filename = f"{uid}.jpg"
-            cover_save_path = os.path.join(COVER_SAVE_DIR, cover_filename)
-            web_path = f'ebook_covers/{cover_filename}'
-
-            ebook_metadata = {
-                'uid': uid, 'title': clean_title, 'path': epub_path.replace('\\', '/'),
-                'cover_path': web_path, 'categories': categories_from_name(clean_title)
-            }
-
-            if os.path.exists(cover_save_path):
-                ebook_metadata_list.append(ebook_metadata)
-                continue
-
-            cover_found = False
-
-            # Step 1: Try to extract cover from EPUB
-            try:
-                book = epub.read_epub(epub_path)
-                cover_content = None
-                if item := book.get_item_with_id('cover-image'):
-                    cover_content = item.get_content()
-                if not cover_content and (images := list(book.get_items_of_type(ITEM_IMAGE))):
-                    cover_content = images[0].get_content()
-
-                # Only use extracted cover if it's a reasonable size (at least 10KB)
-                if cover_content and len(cover_content) >= 10240:
-                    with open(cover_save_path, 'wb') as f:
-                        f.write(cover_content)
-                    cover_found = True
-            except Exception as e:
-                pass  # Silently fail, will try fallbacks
-
-            # Step 2: If extraction failed, try Google Books API (high success rate, no API key needed)
-            if not cover_found:
-                epub_meta = extract_epub_metadata(epub_path)
-                cover_url = fetch_cover_from_google_books(epub_meta['title'], epub_meta['author'], epub_meta['isbn'])
-                if cover_url and download_cover_image(cover_url, cover_save_path):
-                    print(f"  Info: Downloaded cover from Google Books for '{clean_title}'")
-                    cover_found = True
-
-            # Step 3: If Google Books failed, try Open Library API
-            if not cover_found:
-                if fetch_cover_from_openlibrary(clean_title, cover_save_path):
-                    print(f"  Info: Downloaded cover from Open Library for '{clean_title}'")
-                    cover_found = True
-
-            # Step 4: If still no cover, generate one
-            if not cover_found:
-                print(f"  Info: Generated placeholder cover for '{clean_title}'")
-                generate_cover_image(clean_title, cover_save_path)
-
-            ebook_metadata_list.append(ebook_metadata)
-    return ebook_metadata_list
+# REMOVED: Migrated to Calibre-Web for ebook management
+# Ebooks are now fetched via Calibre-Web API instead of scanning filesystem
+# def process_ebooks(epub_dir):
+#     """Scans for .epub files, extracts or generates covers, and returns a list of metadata."""
+#     ebook_metadata_list = []
+#     if not os.path.isdir(epub_dir):
+#         return ebook_metadata_list
+#
+#     COVER_SAVE_DIR = os.path.join(os.path.dirname(__file__), '..', 'static', 'ebook_covers')
+#     os.makedirs(COVER_SAVE_DIR, exist_ok=True)
+#
+#     print("\n--- Processing E-books ---")
+#     for filename in os.listdir(epub_dir):
+#         if filename.lower().endswith('.epub'):
+#             clean_title = os.path.splitext(filename)[0].replace('_', ' ').title()
+#             epub_path = os.path.join(epub_dir, filename)
+#             uid = hashlib.md5(filename.encode()).hexdigest()
+#
+#             cover_filename = f"{uid}.jpg"
+#             cover_save_path = os.path.join(COVER_SAVE_DIR, cover_filename)
+#             web_path = f'ebook_covers/{cover_filename}'
+#
+#             ebook_metadata = {
+#                 'uid': uid, 'title': clean_title, 'path': epub_path.replace('\\', '/'),
+#                 'cover_path': web_path, 'categories': categories_from_name(clean_title)
+#             }
+#
+#             if os.path.exists(cover_save_path):
+#                 ebook_metadata_list.append(ebook_metadata)
+#                 continue
+#
+#             cover_found = False
+#
+#             # Step 1: Try to extract cover from EPUB
+#             try:
+#                 book = epub.read_epub(epub_path)
+#                 cover_content = None
+#                 if item := book.get_item_with_id('cover-image'):
+#                     cover_content = item.get_content()
+#                 if not cover_content and (images := list(book.get_items_of_type(ITEM_IMAGE))):
+#                     cover_content = images[0].get_content()
+#
+#                 # Only use extracted cover if it's a reasonable size (at least 10KB)
+#                 if cover_content and len(cover_content) >= 10240:
+#                     with open(cover_save_path, 'wb') as f:
+#                         f.write(cover_content)
+#                     cover_found = True
+#             except Exception as e:
+#                 pass  # Silently fail, will try fallbacks
+#
+#             # Step 2: If extraction failed, try Google Books API (high success rate, no API key needed)
+#             if not cover_found:
+#                 epub_meta = extract_epub_metadata(epub_path)
+#                 cover_url = fetch_cover_from_google_books(epub_meta['title'], epub_meta['author'], epub_meta['isbn'])
+#                 if cover_url and download_cover_image(cover_url, cover_save_path):
+#                     print(f"  Info: Downloaded cover from Google Books for '{clean_title}'")
+#                     cover_found = True
+#
+#             # Step 3: If Google Books failed, try Open Library API
+#             if not cover_found:
+#                 if fetch_cover_from_openlibrary(clean_title, cover_save_path):
+#                     print(f"  Info: Downloaded cover from Open Library for '{clean_title}'")
+#                     cover_found = True
+#
+#             # Step 4: If still no cover, generate one
+#             if not cover_found:
+#                 print(f"  Info: Generated placeholder cover for '{clean_title}'")
+#                 generate_cover_image(clean_title, cover_save_path)
+#
+#             ebook_metadata_list.append(ebook_metadata)
+#     return ebook_metadata_list
 
 def package_context(content_dir):
     """Creates a 'context' directory with essential project files."""
@@ -450,17 +454,19 @@ def main():
                         course.thumbnail = metadata['thumbnail']
 
         # --- Process E-books ---
-        ebooks_data = process_ebooks(EPUB_DIR)
-        for data in ebooks_data:
-            ebook = Ebook.query.filter_by(uid=data['uid']).first()
-            if ebook is None:
-                ebook = Ebook(uid=data['uid'])
-                db.session.add(ebook)
-
-            ebook.title = data['title']
-            ebook.path = data['path']
-            ebook.cover_path = data['cover_path']
-            ebook.categories = ','.join(data['categories'])
+        # REMOVED: Migrated to Calibre-Web for ebook management
+        # Ebooks are now fetched via Calibre-Web API instead of scanning filesystem
+        # ebooks_data = process_ebooks(EPUB_DIR)
+        # for data in ebooks_data:
+        #     ebook = Ebook.query.filter_by(uid=data['uid']).first()
+        #     if ebook is None:
+        #         ebook = Ebook(uid=data['uid'])
+        #         db.session.add(ebook)
+        #
+        #     ebook.title = data['title']
+        #     ebook.path = data['path']
+        #     ebook.cover_path = data['cover_path']
+        #     ebook.categories = ','.join(data['categories'])
 
         db.session.commit()
         print("\nDatabase population complete.")

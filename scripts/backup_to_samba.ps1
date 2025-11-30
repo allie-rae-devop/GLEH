@@ -2,17 +2,44 @@
 # GLEH Deployment Backup Script
 # Backs up non-git files to Samba for easy deployment on other machines
 
-$BACKUP_PATH = "\\10.0.10.61\project-data\DEPLOYMENT_BACKUP"
+# Load configuration from .env file
+function Get-EnvValue {
+    param([string]$Key)
+
+    $envPath = Join-Path (Get-Location).Path.Replace("\scripts", "") ".env"
+    if (Test-Path $envPath) {
+        $content = Get-Content $envPath
+        foreach ($line in $content) {
+            if ($line -match "^\s*$Key\s*=\s*(.+)$") {
+                return $matches[1].Trim()
+            }
+        }
+    }
+    return $null
+}
+
+# Read Samba configuration from .env
+$SAMBA_HOST = Get-EnvValue "SAMBA_HOST"
+$SAMBA_SHARE = Get-EnvValue "SAMBA_SHARE"
+
+if (-not $SAMBA_HOST -or -not $SAMBA_SHARE) {
+    Write-Host "[ERROR] SAMBA_HOST and SAMBA_SHARE must be set in .env file" -ForegroundColor Red
+    exit 1
+}
+
+$BACKUP_PATH = "\\$SAMBA_HOST\$SAMBA_SHARE\DEPLOYMENT_BACKUP"
+$SAMBA_PATH = "\\$SAMBA_HOST\$SAMBA_SHARE"
 
 Write-Host "`n========================================" -ForegroundColor Cyan
 Write-Host "GLEH Deployment Backup to Samba" -ForegroundColor Cyan
 Write-Host "========================================`n" -ForegroundColor Cyan
 
 # Test Samba connection
-Write-Host "Testing Samba connection..." -ForegroundColor Yellow
-if (-not (Test-Path "\\10.0.10.61\project-data")) {
-    Write-Host "[ERROR] Cannot access Samba share at \\10.0.10.61\project-data" -ForegroundColor Red
-    Write-Host "Make sure you're on the home network and server is running.`n" -ForegroundColor Red
+Write-Host "Testing Samba connection to $SAMBA_PATH..." -ForegroundColor Yellow
+if (-not (Test-Path $SAMBA_PATH)) {
+    Write-Host "[ERROR] Cannot access Samba share at $SAMBA_PATH" -ForegroundColor Red
+    Write-Host "Make sure you're on the network and server is running.`n" -ForegroundColor Red
+    Write-Host "Check SAMBA_HOST=$SAMBA_HOST and SAMBA_SHARE=$SAMBA_SHARE in .env file`n" -ForegroundColor Red
     exit 1
 }
 Write-Host "[OK] Samba share accessible`n" -ForegroundColor Green

@@ -3,20 +3,53 @@
 # Restores non-git files FROM Samba TO local machine
 # Use this when switching devices or pulling latest backup
 
-$BACKUP_PATH = "J:\DEPLOYMENT_BACKUP"
+# Load configuration from .env file
+function Get-EnvValue {
+    param([string]$Key)
+
+    $envPath = Join-Path (Get-Location).Path.Replace("\scripts", "") ".env"
+    if (Test-Path $envPath) {
+        $content = Get-Content $envPath
+        foreach ($line in $content) {
+            if ($line -match "^\s*$Key\s*=\s*(.+)$") {
+                return $matches[1].Trim()
+            }
+        }
+    }
+    return $null
+}
+
+# Read CONTENT_DIR from .env (which points to Samba share)
+$CONTENT_DIR = Get-EnvValue "CONTENT_DIR"
+
+if (-not $CONTENT_DIR) {
+    Write-Host "[ERROR] CONTENT_DIR must be set in .env file" -ForegroundColor Red
+    exit 1
+}
+
+# Extract the root of the Samba mount (J:\ or UNC path)
+if ($CONTENT_DIR -match "^([A-Z]:\\)") {
+    $SAMBA_ROOT = $matches[1]
+} elseif ($CONTENT_DIR -match "^(\\\\[^\\]+\\[^\\]+)") {
+    $SAMBA_ROOT = $matches[1]
+} else {
+    $SAMBA_ROOT = $CONTENT_DIR
+}
+
+$BACKUP_PATH = Join-Path $SAMBA_ROOT "DEPLOYMENT_BACKUP"
 
 Write-Host "`n========================================" -ForegroundColor Cyan
 Write-Host "GLEH Restore from Samba" -ForegroundColor Cyan
 Write-Host "========================================`n" -ForegroundColor Cyan
 
 # Test Samba connection
-Write-Host "Testing Samba connection..." -ForegroundColor Yellow
-if (-not (Test-Path "J:\")) {
-    Write-Host "[ERROR] Cannot access J:\ drive (Samba not mapped)" -ForegroundColor Red
-    Write-Host "Make sure Samba is mapped to J:\ or update this script.`n" -ForegroundColor Red
+Write-Host "Testing Samba connection to $SAMBA_ROOT..." -ForegroundColor Yellow
+if (-not (Test-Path $SAMBA_ROOT)) {
+    Write-Host "[ERROR] Cannot access $SAMBA_ROOT" -ForegroundColor Red
+    Write-Host "Check CONTENT_DIR in .env file: $CONTENT_DIR`n" -ForegroundColor Red
     exit 1
 }
-Write-Host "[OK] J:\ drive accessible`n" -ForegroundColor Green
+Write-Host "[OK] Samba accessible`n" -ForegroundColor Green
 
 # Check backup exists
 if (-not (Test-Path $BACKUP_PATH)) {

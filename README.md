@@ -15,43 +15,67 @@ This project represents a **"Human-in-the-Loop" AI development workflow**.
 
 A production-ready Flask-based educational platform for managing courses and e-books (EPUB/PDF) with flexible storage configuration, Docker deployment, and comprehensive admin tools.
 
-**Status:** 🟠 Ready for development, critical fixes needed before production
-**Last Updated:** November 19, 2025
+**Status:** 🟡 Phase 2 In Progress - Preparing for 1.0 Public Release
+**Last Updated:** November 30, 2025
+**Version:** 0.9-beta
 
 ---
 
 ## Changelog
 
-### November 19, 2025 - Phase 1.6: Flask Development Testing (In Progress)
+### November 30, 2025 - Phase 1 Complete: Calibre-Web Integration ✅
+
+**Major Milestone:** Transitioned from standalone ebook management to Calibre-Web OPDS API integration
+
+**What Was Accomplished:**
+- ✅ Created Calibre-Web OPDS API client ([src/calibre_client.py](src/calibre_client.py))
+- ✅ Updated homepage to fetch books dynamically from Calibre-Web (http://10.0.10.75:8083)
+- ✅ Replaced static Ebook model with dynamic OPDS feed fetching
+- ✅ Created EbookNote model for textbook notes
+- ✅ Created CalibreReadingProgress model for reading progress tracking
+- ✅ Implemented automatic reading progress tracking on book visits
+- ✅ Created textbook launch page with note-taking functionality
+- ✅ Updated profile page to show ebook notes and reading progress
+- ✅ Fixed profile page bugs (missing imports, old models)
+- ✅ Organized scripts directory with batch file wrappers
+- ✅ Database migrations completed
+
+**Database Changes:**
+- Added: `EbookNote` - User notes for ebooks
+- Added: `CalibreReadingProgress` - Reading progress tracking
+- Deprecated: `Ebook` - Replaced by Calibre-Web OPDS
+- Deprecated: `ReadingProgress` - Replaced by CalibreReadingProgress
+
+**Infrastructure Improvements:**
+- Scripts directory organized with .bat wrappers for PowerShell scripts
+- Samba backup/restore workflow maintained
+- Development workflow streamlined
+
+**Next Phase: 1.0 Public Release Preparation**
+Five major tasks remaining:
+1. MIT OCW Course Integration (replace copyright-protected courses)
+2. File Hosting Solution (Docker volume mounts or MinIO)
+3. Admin Panel Testing & Implementation
+4. Portfolio About Page & First-Visit Modal
+5. Docker Deployment & Beta Testing
+
+**Target:** 1.0 Public Release by December 12-17, 2025
+
+---
+
+### November 19, 2025 - Phase 1.6: Flask Development Testing
 
 **Database Migration:**
 - ✅ Migrated database.db from local laptop to Samba network storage (J:\)
-- ✅ Seeded database with 36 courses and 54 ebooks using populate_db.py
+- ✅ Seeded database with 36 courses and 54 ebooks
 - ✅ Verified Flask can read/write from network storage
 
-**Features Tested & Working:**
-- ✅ Course functionality fully operational (featured courses, library, detail pages, progress tracking, notes)
-- ✅ Profile functionality fully operational (avatar uploads, user fields, enrolled courses, notes display)
-- 🟠 Ebook reader partially working (books load, progress saves, but UX issues remain)
-
-**Bug Fixes Applied:**
-1. **Flask .env loading** - Added `load_dotenv()` to src/app.py to fix CONTENT_DIR being None
-2. **Cross-drive path validation** - Added try/except for Windows ValueError when comparing J:\ and C:\ paths
-3. **Avatar upload path** - Fixed to use `app.static_folder` instead of `app.root_path` (now saves to correct directory)
-4. **EPUB metadata errors** - Added file existence check before reading optional metadata files from ZIP
-5. **CSRF tokens** - Added inline CSRF helpers to profile.js and course_detail.js
-6. **Reading progress** - Temporarily exempted endpoint with `@csrf.exempt` (needs proper fix later)
-
-**Known Issues:**
-- Ebook reader UX needs improvement (continuous scroll vs discrete page-turning, inconsistent page counts)
-- CSRF exemption on reading progress endpoint is temporary workaround
-- Course launch functionality not yet tested
-- Admin panel not yet tested
-
-**Next Steps:**
-- Complete Phase 1.6 testing (course launch, admin panel)
-- Test device switching (laptop → desktop with Samba storage)
-- Move to Phase 1.7 (Docker Compose testing) and Phase 1.8 (Production deployment)
+**Bug Fixes:**
+1. Flask .env loading - Added `load_dotenv()` to src/app.py
+2. Cross-drive path validation - Added try/except for Windows path comparison
+3. Avatar upload path - Fixed to use `app.static_folder`
+4. EPUB metadata errors - Added file existence checks
+5. CSRF tokens - Added inline CSRF helpers to JavaScript files
 
 ---
 
@@ -147,9 +171,11 @@ An educational platform that lets students:
 
 - ~3,300 lines of Flask code
 - 50+ API endpoints
-- 6 database models (User, Course, Ebook, CourseProgress, CourseNote, ReadingProgress)
+- 7 active database models (User, Course, CourseProgress, CourseNote, EbookNote, CalibreReadingProgress, LayoutSettings)
+- 2 deprecated models (Ebook, ReadingProgress - replaced by Calibre-Web integration)
 - 9 test files with 82 total tests
 - 50+ configurable environment variables
+- Calibre-Web OPDS integration for dynamic ebook management
 
 ---
 
@@ -765,16 +791,22 @@ course
 ├── thumbnail_path (string, optional)
 └── created_at (datetime)
 
-ebook
+ebook_note
 ├── id (int, primary key)
-├── uid (string, unique)
-├── title (string)
-├── author (string, optional)
-├── isbn (string, optional)
-├── categories (string, comma-separated)
-├── file_path (string)
-├── cover_path (string, optional)
-└── created_at (datetime)
+├── user_id (int, foreign key)
+├── ebook_id (string - e.g., 'calibre-4')
+├── content (text)
+├── created_at (datetime)
+└── updated_at (datetime)
+
+calibre_reading_progress
+├── id (int, primary key)
+├── user_id (int, foreign key)
+├── ebook_id (string - e.g., 'calibre-4')
+├── status (string - 'in_progress' or 'completed')
+├── progress_percent (int, 0-100)
+├── last_read (datetime)
+└── unique constraint (user_id, ebook_id)
 
 course_progress
 ├── id (int, primary key)
@@ -791,14 +823,6 @@ course_note
 ├── content (text)
 ├── created_at (datetime)
 └── updated_at (datetime)
-
-reading_progress
-├── id (int, primary key)
-├── user_id (int, foreign key)
-├── ebook_id (int, foreign key)
-├── current_location (string - CFI position)
-├── progress_percentage (float, 0-100)
-└── last_accessed (datetime)
 
 layout_settings
 ├── id (int, primary key)
@@ -1452,7 +1476,7 @@ See `Documentation/LICENSE.txt` for details.
 
 ---
 
-**Version:** 2.0
-**Last Updated:** November 18, 2025
-**Status:** 🟠 Ready for Development, Requires Fixes for Production
-**Next:** Run `python verify_setup.py` then `flask run`
+**Version:** 0.9-beta (Phase 2 In Progress)
+**Last Updated:** November 30, 2025
+**Status:** 🟡 Preparing for 1.0 Public Release
+**Next:** MIT OCW Integration → File Hosting → Admin Panel → About Page → Docker → Beta Testing

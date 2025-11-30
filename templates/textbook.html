@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>{{ course.title }} - GLEH</title>
+    <title>{{ book['title'] }} - GLEH</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
     <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
     <link rel="icon" href="{{ url_for('static', filename='favicon.ico') }}" type="image/x-icon">
@@ -55,57 +55,6 @@
             scrollbar-width: thin;
             scrollbar-color: rgba(255, 255, 255, 0.2) rgba(255, 255, 255, 0.05);
         }
-
-        /* Progress indicator circles */
-        .progress-indicators {
-            position: absolute;
-            bottom: 15px;
-            left: 15px;
-            display: flex;
-            gap: 10px;
-            z-index: 10;
-        }
-
-        .progress-circle {
-            width: 40px;
-            height: 40px;
-            border-radius: 50%;
-            border: 3px solid rgba(255, 255, 255, 0.3);
-            background-color: rgba(128, 128, 128, 0.8);
-            cursor: pointer;
-            transition: all 0.3s ease;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            color: white;
-            font-weight: bold;
-            font-size: 18px;
-        }
-
-        .progress-circle:hover {
-            transform: scale(1.1);
-            border-color: rgba(255, 255, 255, 0.6);
-        }
-
-        .progress-circle.active {
-            opacity: 1 !important;
-            border-width: 4px;
-        }
-
-        .progress-circle.completed {
-            background-color: #28a745;
-            border-color: #28a745;
-        }
-
-        .progress-circle.in-progress {
-            background-color: #ffc107;
-            border-color: #ffc107;
-            color: #000;
-        }
-
-        .thumbnail-container {
-            position: relative;
-        }
     </style>
 </head>
 <body class="bg-body-tertiary">
@@ -131,10 +80,6 @@
                         {% endif %}
                     {% endif %}
                 </ul>
-                <!-- Search Bar -->
-                <form class="d-flex me-2" onsubmit="event.preventDefault(); window.location.href='{{ url_for('index') }}#courses';">
-                    <input class="form-control form-control-sm" type="search" placeholder="Search courses..." aria-label="Search" style="min-width: 200px;">
-                </form>
                 <div id="auth-container"></div>
             </div>
         </div>
@@ -142,41 +87,33 @@
 
     <main class="container-lg my-4">
         <div class="row g-4 equal-height-row">
-            <!-- Course Info Card -->
+            <!-- Book Info Card -->
             <div class="col-lg-8">
                 <div class="card" style="background-color: var(--bs-tertiary-bg);">
                     <div class="row g-0" style="height: 100%;">
-                        <div class="col-md-4 thumbnail-container">
-                            <img src="{{ url_for('static', filename=course.thumbnail) }}"
+                        <div class="col-md-4">
+                            <img src="{{ book['cover_url'] }}"
                                  class="img-fluid rounded-start"
-                                 alt="{{ course.title }} thumbnail"
+                                 alt="{{ book['title'] }} cover"
                                  style="width: 100%; height: 100%; object-fit: cover;">
-
-                            <!-- Progress Indicator Circles -->
-                            <div class="progress-indicators">
-                                <div class="progress-circle completed"
-                                     data-status="Completed"
-                                     title="Mark as Completed"
-                                     style="opacity: 0.6;">
-                                    ✓
-                                </div>
-                                <div class="progress-circle in-progress"
-                                     data-status="In Progress"
-                                     title="Mark as In Progress"
-                                     style="opacity: 0.6;">
-                                    ⟳
-                                </div>
-                            </div>
                         </div>
                         <div class="col-md-8">
                             <div class="card-body d-flex flex-column">
-                                <h1 class="card-title h3">{{ course.title }}</h1>
-                                <p class="card-text flex-grow-1">{{ course.description }}</p>
+                                <h1 class="card-title h3">{{ book['title'] }}</h1>
+                                <p class="card-text"><strong>Author:</strong> {{ book.get('author', 'Unknown') }}</p>
+                                {% if book.get('description') %}
+                                <p class="card-text flex-grow-1">{{ book['description'] }}</p>
+                                {% endif %}
+                                {% if book.get('categories') %}
                                 <div class="mt-2">
                                     <small class="text-muted">
-                                        Status: <span id="current-status" class="fw-bold">Not Started</span>
+                                        Categories:
+                                        {% for category in book['categories'] %}
+                                            <span class="badge bg-secondary">{{ category }}</span>
+                                        {% endfor %}
                                     </small>
                                 </div>
+                                {% endif %}
                             </div>
                         </div>
                     </div>
@@ -189,26 +126,26 @@
                     <div class="card-body d-flex flex-column">
                         <h4 class="card-title">My Notes</h4>
                         {% if current_user.is_authenticated %}
-                            <textarea id="note-content" class="form-control mb-3 flex-grow-1" rows="20" placeholder="Your notes for this course..."></textarea>
+                            <textarea id="note-content" class="form-control mb-3 flex-grow-1" rows="20" placeholder="Your notes for this book...">{{ user_note }}</textarea>
                             <div id="note-status" class="mb-2 text-muted small" style="min-height: 20px;"></div>
                             <div class="row g-2">
                                 <div class="col-6">
-                                    <a href="{{ course.launch_url }}" class="btn btn-primary w-100" target="_blank">
-                                        Launch Course
+                                    <a href="{{ book['reader_url'] }}" class="btn btn-primary w-100" target="_blank">
+                                        Read Book
                                     </a>
                                 </div>
                                 <div class="col-6">
-                                    <button id="save-note-btn" class="btn btn-primary w-100" data-course-uid="{{ course.uid }}">
+                                    <button id="save-note-btn" class="btn btn-primary w-100" data-book-id="{{ book['uid'] }}">
                                         Save Notes
                                     </button>
                                 </div>
                             </div>
                         {% else %}
                             <div class="alert alert-info flex-grow-1">
-                                <p class="mb-0">Please <a href="#" data-bs-toggle="modal" data-bs-target="#auth-modal">login</a> to save notes and track your progress.</p>
+                                <p class="mb-0">Please <a href="#" data-bs-toggle="modal" data-bs-target="#auth-modal">login</a> to save notes.</p>
                             </div>
-                            <a href="{{ course.launch_url }}" class="btn btn-primary w-100" target="_blank">
-                                Launch Course
+                            <a href="{{ book['reader_url'] }}" class="btn btn-primary w-100" target="_blank">
+                                Read Book
                             </a>
                         {% endif %}
                     </div>
@@ -245,6 +182,6 @@
     </div>
 
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
-    <script src="{{ url_for('static', filename='js/course_detail.js') }}?v=4"></script>
+    <script src="{{ url_for('static', filename='js/textbook_detail.js') }}"></script>
 </body>
 </html>
