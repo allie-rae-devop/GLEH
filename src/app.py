@@ -18,7 +18,6 @@ from collections import defaultdict
 from werkzeug.utils import secure_filename
 from werkzeug.exceptions import NotFound
 from flask import Flask, request, jsonify, render_template, abort, url_for, redirect, session, g, send_file, send_from_directory, make_response
-from flask_migrate import Migrate
 from flask_login import LoginManager, login_user, logout_user, login_required, current_user
 from flask_wtf.csrf import generate_csrf, CSRFError
 from PIL import Image
@@ -47,9 +46,8 @@ except ImportError:
     log = logging.getLogger(__name__)
     log.warning("structlog not installed, using standard logging")
 
-# --- Database and Migration Initialization ---
+# --- Database Initialization ---
 db.init_app(app)
-migrate = Migrate(app, db)
 
 # --- CSRF Protection Initialization ---
 from flask_wtf.csrf import CSRFProtect
@@ -62,6 +60,7 @@ login_manager.login_view = 'index'
 from .models import User, Course, Ebook, CourseProgress, CourseNote, ReadingProgress, EbookNote, CalibreReadingProgress
 from .admin_api import admin_bp
 from .calibre_client import get_calibre_client
+from .minio_client import get_minio_client
 
 @login_manager.user_loader
 def load_user(user_id):
@@ -912,22 +911,28 @@ def upload_avatar():
     except Exception as e:
         return jsonify({'error': f'Invalid or corrupted image file: {str(e)}'}), 400
 
-    # Save file to Samba storage for multi-device sync
+    # Save file to MinIO object storage
     filename = secure_filename(f"{current_user.id}_{file.filename}")
+    object_name = f"uploads/avatars/{filename}"
 
-    # Get CONTENT_DIR from environment (should be J:\ or Samba path)
-    content_dir = os.environ.get('CONTENT_DIR', 'J:\\')
-    avatar_dir = os.path.join(content_dir, 'uploads', 'avatars')
-    filepath = os.path.join(avatar_dir, filename)
+    try:
+        # Get MinIO client
+        minio_client = get_minio_client()
 
-    # Ensure avatar directory exists on Samba
-    os.makedirs(avatar_dir, exist_ok=True)
+        # Upload file to MinIO
+        file.seek(0)  # Reset stream position
+        minio_client.upload_werkzeug_file(
+            file=file,
+            object_name=object_name
+        )
 
-    file.save(filepath)
+        # Update user avatar
+        current_user.avatar = filename
+        db.session.commit()
 
-    # Update user avatar
-    current_user.avatar = filename
-    db.session.commit()
+    except Exception as e:
+        log.error(f"Failed to upload avatar to MinIO: {e}")
+        return jsonify({'error': 'Failed to upload avatar'}), 500
 
     # Log successful upload
     if hasattr(g, 'log'):
@@ -945,39 +950,34 @@ def upload_avatar():
 
 @app.route('/avatars/<filename>')
 def serve_avatar(filename):
-    """Serve avatar from Samba storage (multi-device sync)"""
+    """Serve avatar from MinIO object storage"""
     # Sanitize filename
     filename = secure_filename(filename)
+    object_name = f"uploads/avatars/{filename}"
 
-    # Get CONTENT_DIR from environment
-    content_dir = os.environ.get('CONTENT_DIR', 'J:\\')
-    avatar_dir = os.path.join(content_dir, 'uploads', 'avatars')
-    filepath = os.path.join(avatar_dir, filename)
-
-    # Security: Ensure file is within avatar directory
     try:
-        filepath_normalized = os.path.normpath(filepath)
-        avatar_dir_normalized = os.path.normpath(avatar_dir)
+        # Get MinIO client
+        minio_client = get_minio_client()
 
-        # Check if path is within avatar directory
-        try:
-            rel_path = os.path.relpath(filepath_normalized, avatar_dir_normalized)
-            if rel_path.startswith('..'):
-                abort(403)
-        except ValueError:
-            # On Windows, relpath raises ValueError if paths are on different drives
-            if not filepath_normalized.lower().startswith(avatar_dir_normalized.lower()):
-                abort(403)
-    except Exception:
-        abort(403)
+        # Check if file exists in MinIO
+        if not minio_client.file_exists(object_name):
+            # Fallback to default avatar
+            return send_from_directory(app.static_folder, 'avatars/default_avatar.svg')
 
-    # Check if file exists
-    if not os.path.exists(filepath):
-        # Fallback to default avatar
+        # Get file from MinIO
+        file_data = minio_client.download_file(object_name)
+        file_info = minio_client.get_file_info(object_name)
+
+        # Create response with file data
+        response = make_response(file_data)
+        response.headers['Content-Type'] = file_info.get('content_type', 'image/jpeg')
+        response.headers['Cache-Control'] = 'public, max-age=3600'  # Cache for 1 hour
+        return response
+
+    except Exception as e:
+        log.error(f"Failed to serve avatar from MinIO: {e}")
+        # Fallback to default avatar on error
         return send_from_directory(app.static_folder, 'avatars/default_avatar.svg')
-
-    # Serve the file
-    return send_from_directory(avatar_dir, filename)
 
 # --- Ebook Reader Routes ---
 # MIGRATED TO CALIBRE-WEB: Custom ebook reader replaced by Calibre-Web with Nginx SSO

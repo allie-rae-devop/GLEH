@@ -77,7 +77,7 @@ echo -e "${YELLOW}Running database migrations...${NC}"
 cd /app
 
 # Check if this is the first run (no migrations directory)
-if [ ! -d "app/migrations" ]; then
+if [ ! -d "src/migrations" ]; then
     echo -e "${YELLOW}First run detected, initializing migrations...${NC}"
     python -m flask db init || echo -e "${YELLOW}Migrations already initialized${NC}"
 fi
@@ -89,7 +89,7 @@ else
     if grep -q "No such table" /tmp/migration.log 2>/dev/null; then
         echo -e "${YELLOW}Database appears uninitialized, creating schema...${NC}"
         python -m flask shell << 'EOF'
-from app.src.database import db
+from src.database import db
 db.create_all()
 print("✓ Database schema created")
 EOF

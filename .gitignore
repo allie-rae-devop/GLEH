@@ -5,6 +5,7 @@
 .env.local
 .env.*.local
 .env.*
+!.env.template  # Exception: template file is safe to commit
 *.key
 *.pem
 *.p12
@@ -64,6 +65,7 @@ courses/
 datasets/
 data_files/
 content/
+data/  # Docker runtime data (postgres volumes, etc.)
 
 # ============================================================================
 # DATABASE FILES (DATA - don't track)

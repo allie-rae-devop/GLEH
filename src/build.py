@@ -21,7 +21,6 @@ import urllib.parse
 # from ebooklib import epub, ITEM_IMAGE
 # from bs4 import BeautifulSoup
 from PIL import Image, ImageDraw, ImageFont
-from flask_migrate import upgrade as db_upgrade # Import upgrade command
 
 from .app import app
 from .database import db

@@ -24,8 +24,8 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     && rm -rf /var/lib/apt/lists/*
 
 # Copy requirements and install Python dependencies
-COPY app/requirements.txt .
-RUN pip install --user --no-cache-dir -r requirements.txt
+COPY requirements.txt .
+RUN pip install --no-cache-dir -r requirements.txt
 
 # ============================================================================
 # STAGE 2: RUNTIME
@@ -38,8 +38,9 @@ LABEL maintainer="GLEH Development Team"
 ENV PYTHONUNBUFFERED=1 \
     PYTHONDONTWRITEBYTECODE=1 \
     PIP_NO_CACHE_DIR=1 \
-    FLASK_APP=app/src/app.py \
-    PATH=/root/.local/bin:$PATH
+    FLASK_APP=src/app.py \
+    PATH=/usr/local/bin:$PATH \
+    PYTHONPATH=/app
 
 # Set working directory
 WORKDIR /app
@@ -48,19 +49,19 @@ WORKDIR /app
 RUN apt-get update && apt-get install -y --no-install-recommends \
     postgresql-client \
     curl \
+    netcat-openbsd \
     ffmpeg \
     libpq5 \
     && rm -rf /var/lib/apt/lists/*
 
 # Copy Python dependencies from builder
-COPY --from=builder /root/.local /root/.local
+COPY --from=builder /usr/local /usr/local
 
 # Copy application code
-COPY app /app/app
-COPY docker/entrypoint.sh /app/entrypoint.sh
-
-# Make entrypoint executable
-RUN chmod +x /app/entrypoint.sh
+COPY src /app/src
+COPY templates /app/templates
+COPY static /app/static
+COPY scripts /app/scripts
 
 # Create non-root user for security
 RUN useradd -m -u 1000 gleh && \
@@ -76,6 +77,5 @@ EXPOSE 5000
 HEALTHCHECK --interval=30s --timeout=10s --start-period=40s --retries=3 \
     CMD curl -f http://localhost:5000/health || exit 1
 
-# Run application
-ENTRYPOINT ["/app/entrypoint.sh"]
-CMD ["python", "-m", "waitress", "--host=0.0.0.0", "--port=5000", "app.src.app:app"]
+# Run application (migrations will be handled separately)
+CMD ["python", "-m", "waitress", "--host=0.0.0.0", "--port=5000", "src.app:app"]

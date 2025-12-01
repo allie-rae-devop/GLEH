@@ -69,6 +69,10 @@ services:
     depends_on:
       db:
         condition: service_healthy
+      minio:
+        condition: service_healthy
+      calibre-web:
+        condition: service_started
     environment:
       # Flask Configuration
       FLASK_APP: src/app.py
@@ -80,12 +84,18 @@ services:
       # Database Configuration
       DATABASE_URL: postgresql://${DB_USER:-gleh_user}:${DB_PASSWORD:-change_me_in_production}@db:5432/${DB_NAME:-gleh_db}
 
-      # Storage Configuration
-      STORAGE_TYPE: ${STORAGE_TYPE:-local}
-      CONTENT_DIR: ${CONTENT_DIR:-/data/gleh}
-      LOCAL_COURSES_DIR: ${LOCAL_COURSES_DIR:-/data/gleh/courses}
-      LOCAL_EBOOKS_DIR: ${LOCAL_EBOOKS_DIR:-/data/gleh/ebooks}
-      LOCAL_UPLOADS_DIR: ${LOCAL_UPLOADS_DIR:-/data/gleh/uploads}
+      # Storage Configuration - MinIO Object Storage
+      STORAGE_TYPE: ${STORAGE_TYPE:-minio}
+
+      # MinIO Configuration
+      MINIO_ENDPOINT: ${MINIO_ENDPOINT:-minio:9000}
+      MINIO_ACCESS_KEY: ${MINIO_ROOT_USER:-minioadmin}
+      MINIO_SECRET_KEY: ${MINIO_ROOT_PASSWORD:-minioadmin}
+      MINIO_BUCKET: ${MINIO_BUCKET:-gleh-storage}
+      MINIO_SECURE: ${MINIO_SECURE:-false}
+
+      # Calibre-Web Integration (Docker network name)
+      CALIBRE_WEB_URL: ${CALIBRE_WEB_URL:-http://calibre-web:8083}
 
       # Security
       SECRET_KEY: ${SECRET_KEY:-change_me_in_production}
@@ -93,12 +103,12 @@ services:
       SESSION_COOKIE_HTTPONLY: "true"
       SESSION_COOKIE_SAMESITE: "Lax"
 
-      # Samba Configuration (for remote storage on network shares)
-      SAMBA_HOST: ${SAMBA_HOST}
-      SAMBA_SHARE: ${SAMBA_SHARE}
-      SAMBA_USERNAME: ${SAMBA_USERNAME}
-      SAMBA_PASSWORD: ${SAMBA_PASSWORD}
-      SAMBA_MOUNT_PATH: ${SAMBA_MOUNT_PATH:-/mnt/gleh-data}
+      # Legacy Samba Configuration (DEPRECATED - for private fork only)
+      # SAMBA_HOST: ${SAMBA_HOST}
+      # SAMBA_SHARE: ${SAMBA_SHARE}
+      # SAMBA_USERNAME: ${SAMBA_USERNAME}
+      # SAMBA_PASSWORD: ${SAMBA_PASSWORD}
+      # SAMBA_MOUNT_PATH: ${SAMBA_MOUNT_PATH:-/mnt/gleh-data}
 
       # Logging
       LOG_LEVEL: ${LOG_LEVEL:-INFO}
@@ -107,10 +117,9 @@ services:
     ports:
       - "127.0.0.1:5000:5000"  # Internal only - use Nginx for external access
     volumes:
-      # Content storage - supports both local and Samba paths
-      # Local: ../data/gleh
-      # Samba: /mnt/gleh-data (after mounting on host)
-      - ${CONTENT_DIR:-../data/gleh}:/data/gleh:rw
+      # No local file mounts needed - all storage handled by MinIO
+      # Legacy: ${CONTENT_DIR:-../data/gleh}:/data/gleh:rw (REMOVED)
+      - app_logs:/app/logs:rw
 
     networks:
       - gleh_network
@@ -128,6 +137,99 @@ services:
           memory: 1G
         reservations:
           cpus: '1'
+          memory: 512M
+
+  # =========================================================================
+  # MINIO OBJECT STORAGE SERVICE
+  # =========================================================================
+  minio:
+    image: minio/minio:latest
+    container_name: gleh-minio
+    command: server /data --console-address ":9001"
+    environment:
+      MINIO_ROOT_USER: ${MINIO_ROOT_USER:-minioadmin}
+      MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD:-minioadmin}
+      MINIO_BROWSER_REDIRECT_URL: ${MINIO_BROWSER_REDIRECT_URL:-http://localhost:9001}
+    ports:
+      - "${MINIO_API_PORT:-9000}:9000"      # MinIO API
+      - "${MINIO_CONSOLE_PORT:-9001}:9001"  # MinIO Web Console
+    volumes:
+      - minio_data:/data
+    networks:
+      - gleh_network
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:9000/minio/health/live"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 20s
+    restart: unless-stopped
+    deploy:
+      resources:
+        limits:
+          cpus: '1'
+          memory: 1G
+        reservations:
+          cpus: '0.5'
+          memory: 512M
+
+  # =========================================================================
+  # CALIBRE - EBOOK LIBRARY MANAGEMENT
+  # =========================================================================
+  calibre:
+    image: lscr.io/linuxserver/calibre:latest
+    container_name: gleh-calibre
+    environment:
+      - PUID=${CALIBRE_PUID:-1024}
+      - PGID=${CALIBRE_PGID:-100}
+      - TZ=${TZ:-America/Los_Angeles}
+      - PASSWORD=${CALIBRE_PASSWORD:-Camel100}
+    ports:
+      - "${CALIBRE_WEB_PORT:-8080}:8080"       # Calibre web interface
+      - "${CALIBRE_SERVER_PORT:-8081}:8081"    # Calibre content server
+    volumes:
+      - calibre_library:/config
+    networks:
+      - gleh_network
+    restart: unless-stopped
+    deploy:
+      resources:
+        limits:
+          cpus: '2'
+          memory: 2G
+        reservations:
+          cpus: '1'
+          memory: 1G
+
+  # =========================================================================
+  # CALIBRE-WEB - EBOOK WEB INTERFACE & OPDS
+  # =========================================================================
+  calibre-web:
+    image: lscr.io/linuxserver/calibre-web:latest
+    container_name: gleh-calibre-web
+    depends_on:
+      - calibre
+    environment:
+      - PUID=${CALIBRE_WEB_PUID:-1024}
+      - PGID=${CALIBRE_WEB_PGID:-100}
+      - TZ=${TZ:-America/Los_Angeles}
+      - DOCKER_MODS=linuxserver/mods:universal-calibre
+      - OAUTHLIB_RELAX_TOKEN_SCOPE=1
+    ports:
+      - "${CALIBRE_WEB_PORT:-8083}:8083"
+    volumes:
+      - calibre_library:/config      # Shared with Calibre for metadata.db
+      - calibre_library:/books        # Shared library location
+    networks:
+      - gleh_network
+    restart: unless-stopped
+    deploy:
+      resources:
+        limits:
+          cpus: '1'
+          memory: 1G
+        reservations:
+          cpus: '0.5'
           memory: 512M
 
   # =========================================================================
@@ -176,6 +278,20 @@ volumes:
       o: bind
       device: ${DB_DATA_DIR:-../data/postgres}
 
+  minio_data:
+    driver: local
+    name: gleh-minio-data
+
+  app_logs:
+    driver: local
+    name: gleh-app-logs
+
+  calibre_library:
+    driver: local
+    name: gleh-calibre-library
+    # This volume stores the Calibre library database and ebooks
+    # Shared between Calibre (writes) and Calibre-Web (reads)
+
 ################################################################################
 # NETWORKS - Inter-service Communication
 ################################################################################
@@ -191,21 +307,35 @@ networks:
 #
 # LOCAL DEVELOPMENT:
 #   - Copy .env.example to .env in the docker directory
-#   - Set CONTENT_DIR to your local data directory (e.g., D:\GLEH Data)
 #   - Run: docker-compose up
-#   - Access at http://localhost
+#   - Access Flask app at http://localhost
+#   - Access MinIO console at http://localhost:9001 (minioadmin/minioadmin)
 #
 # PRODUCTION DEPLOYMENT:
 #   - Set FLASK_ENV=production
 #   - Set SECRET_KEY to a strong random value
-#   - Configure DATABASE_URL for your database
-#   - Set STORAGE_TYPE and paths appropriately
-#   - Configure SSL certificates for HTTPS
+#   - Set MINIO_ROOT_USER and MINIO_ROOT_PASSWORD to secure values
+#   - Configure SSL certificates for HTTPS (nginx and MinIO)
 #   - Use environment variables (not .env file) for secrets
+#   - Consider enabling MinIO encryption and versioning
 #
-# SAMBA INTEGRATION:
-#   - Configure mount binds in volumes section above
-#   - Ensure Samba is accessible and mounted on host
-#   - Update SAMBA_* environment variables
+# MINIO OBJECT STORAGE:
+#   - Buckets are created automatically by src/minio_client.py on startup
+#   - Default bucket: gleh-storage
+#   - Subfolders: courses/, uploads/
+#   - Web console: http://localhost:9001
+#   - API endpoint: http://minio:9000 (internal Docker network)
+#
+# CALIBRE + CALIBRE-WEB:
+#   - Calibre: Ebook library management (http://localhost:8080)
+#   - Calibre-Web: Web interface + OPDS API (http://localhost:8083)
+#   - Both share the calibre_library volume
+#   - Calibre manages metadata.db, Calibre-Web reads it
+#   - GLEH Flask app connects to Calibre-Web OPDS feed
+#
+# LEGACY SAMBA INTEGRATION (DEPRECATED - Private fork only):
+#   - Samba configuration has been removed for public 1.0 release
+#   - All file storage now handled by MinIO object storage
+#   - For private fork: uncomment Samba environment variables
 #
 ################################################################################
