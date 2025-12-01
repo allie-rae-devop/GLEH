@@ -35,6 +35,7 @@ class User(UserMixin, db.Model):
 class Course(db.Model):
     """
     Represents a single educational course.
+    Supports both local courses and MIT OpenCourseWare (OCW) courses.
     """
     id = db.Column(db.Integer, primary_key=True)
     uid = db.Column(db.String(255), unique=True, nullable=False, index=True)
@@ -45,20 +46,58 @@ class Course(db.Model):
     categories = db.Column(db.String(512))
     thumbnail = db.Column(db.String(512))
 
+    # MIT OCW specific fields
+    instructor = db.Column(db.String(512))  # Instructor names (comma-separated)
+    course_number = db.Column(db.String(64))  # e.g., "6.189", "6.0001"
+    term = db.Column(db.String(64))  # e.g., "Fall", "Spring", "January IAP"
+    year = db.Column(db.String(16))  # e.g., "2008", "2016"
+    level = db.Column(db.String(64))  # e.g., "Undergraduate", "Graduate"
+    department = db.Column(db.String(128))  # Department numbers (comma-separated)
+    license_url = db.Column(db.String(512))  # Creative Commons license URL
+    ocw_url = db.Column(db.String(512))  # Original MIT OCW course URL
+    learning_resources = db.Column(db.Text)  # JSON array of resource types
+
     @property
     def launch_url(self):
-        """Convert absolute file path to web-accessible URL"""
+        """Convert path to web-accessible URL"""
         if not self.path:
             return None
-        # Extract the relative path after 'courses/' from the absolute path
-        # Example: J:/courses/CourseName/package/index.html -> CourseName/package/index.html
+
+        # Handle volume-based courses (new standard)
+        # Path format: "Course-Name/index.html"
+        # Served directly by nginx from /app/data/courses/
+        if not self.path.startswith('/') and '\\' not in self.path:
+            return f'/courses/{self.path}'
+
+        # Handle legacy local filesystem courses
+        # Example: J:/courses/CourseName/package/index.html
         import re
-        # Match the path after 'courses/' (case insensitive for Windows)
         match = re.search(r'[/\\]courses[/\\](.+)', self.path, re.IGNORECASE)
         if match:
             relative_path = match.group(1).replace('\\', '/')
             return f'/courses/{relative_path}'
+
         return self.path
+
+    @property
+    def thumbnail_url(self):
+        """Convert thumbnail path to web-accessible URL"""
+        if not self.thumbnail:
+            return None
+
+        # Handle volume-based course thumbnails
+        # Path format: "Course-Name/static_resources/image.jpg"
+        if not self.thumbnail.startswith(('http://', 'https://', '/', 'static/')):
+            # Course-relative path, prepend /courses/
+            return f'/courses/{self.thumbnail}'
+
+        # Handle absolute URLs
+        if self.thumbnail.startswith(('http://', 'https://', '/')):
+            return self.thumbnail
+
+        # Default: assume it's in static folder
+        from flask import url_for
+        return url_for('static', filename=self.thumbnail)
 
     def __repr__(self):
         return f'<Course {self.title}>'

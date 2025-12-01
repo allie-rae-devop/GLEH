@@ -68,9 +68,7 @@ services:
     container_name: gleh-web
     depends_on:
       db:
-        condition: service_healthy
-      minio:
-        condition: service_healthy
+        condition: service_started
       calibre-web:
         condition: service_started
     environment:
@@ -83,16 +81,6 @@ services:
 
       # Database Configuration
       DATABASE_URL: postgresql://${DB_USER:-gleh_user}:${DB_PASSWORD:-change_me_in_production}@db:5432/${DB_NAME:-gleh_db}
-
-      # Storage Configuration - MinIO Object Storage
-      STORAGE_TYPE: ${STORAGE_TYPE:-minio}
-
-      # MinIO Configuration
-      MINIO_ENDPOINT: ${MINIO_ENDPOINT:-minio:9000}
-      MINIO_ACCESS_KEY: ${MINIO_ROOT_USER:-minioadmin}
-      MINIO_SECRET_KEY: ${MINIO_ROOT_PASSWORD:-minioadmin}
-      MINIO_BUCKET: ${MINIO_BUCKET:-gleh-storage}
-      MINIO_SECURE: ${MINIO_SECURE:-false}
 
       # Calibre-Web Integration (Docker network name)
       CALIBRE_WEB_URL: ${CALIBRE_WEB_URL:-http://calibre-web:8083}
@@ -117,8 +105,9 @@ services:
     ports:
       - "127.0.0.1:5000:5000"  # Internal only - use Nginx for external access
     volumes:
-      # No local file mounts needed - all storage handled by MinIO
-      # Legacy: ${CONTENT_DIR:-../data/gleh}:/data/gleh:rw (REMOVED)
+      # Course materials served directly by nginx
+      - courses_data:/app/data/courses:ro
+      # Application logs
       - app_logs:/app/logs:rw
 
     networks:
@@ -127,8 +116,8 @@ services:
       test: ["CMD", "curl", "-f", "http://localhost:5000/health"]
       interval: 30s
       timeout: 10s
-      retries: 3
-      start_period: 40s
+      retries: 5
+      start_period: 60s
     restart: unless-stopped
     deploy:
       resources:
@@ -137,40 +126,6 @@ services:
           memory: 1G
         reservations:
           cpus: '1'
-          memory: 512M
-
-  # =========================================================================
-  # MINIO OBJECT STORAGE SERVICE
-  # =========================================================================
-  minio:
-    image: minio/minio:latest
-    container_name: gleh-minio
-    command: server /data --console-address ":9001"
-    environment:
-      MINIO_ROOT_USER: ${MINIO_ROOT_USER:-minioadmin}
-      MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD:-minioadmin}
-      MINIO_BROWSER_REDIRECT_URL: ${MINIO_BROWSER_REDIRECT_URL:-http://localhost:9001}
-    ports:
-      - "${MINIO_API_PORT:-9000}:9000"      # MinIO API
-      - "${MINIO_CONSOLE_PORT:-9001}:9001"  # MinIO Web Console
-    volumes:
-      - minio_data:/data
-    networks:
-      - gleh_network
-    healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:9000/minio/health/live"]
-      interval: 30s
-      timeout: 10s
-      retries: 3
-      start_period: 20s
-    restart: unless-stopped
-    deploy:
-      resources:
-        limits:
-          cpus: '1'
-          memory: 1G
-        reservations:
-          cpus: '0.5'
           memory: 512M
 
   # =========================================================================
@@ -185,7 +140,7 @@ services:
       - TZ=${TZ:-America/Los_Angeles}
       - PASSWORD=${CALIBRE_PASSWORD:-Camel100}
     ports:
-      - "${CALIBRE_WEB_PORT:-8080}:8080"       # Calibre web interface
+      - "${CALIBRE_PORT:-8080}:8080"           # Calibre web interface
       - "${CALIBRE_SERVER_PORT:-8081}:8081"    # Calibre content server
     volumes:
       - calibre_library:/config
@@ -241,12 +196,13 @@ services:
     depends_on:
       - web
     ports:
-      - "0.0.0.0:${NGINX_PORT:-80}:80"
-      - "0.0.0.0:${NGINX_HTTPS_PORT:-443}:443"
+      - "0.0.0.0:${NGINX_PORT:-3080}:80"
+      - "0.0.0.0:${NGINX_HTTPS_PORT:-3443}:443"
     volumes:
       - ./nginx/nginx.conf:/etc/nginx/nginx.conf:ro
       - ./nginx/conf.d:/etc/nginx/conf.d:ro
       - ../static:/app/static:ro
+      - courses_data:/app/data/courses:ro
       # Optional: SSL certificates (uncomment for HTTPS)
       # - ./nginx/ssl:/etc/nginx/ssl:ro
     networks:
@@ -278,10 +234,6 @@ volumes:
       o: bind
       device: ${DB_DATA_DIR:-../data/postgres}
 
-  minio_data:
-    driver: local
-    name: gleh-minio-data
-
   app_logs:
     driver: local
     name: gleh-app-logs
@@ -291,6 +243,13 @@ volumes:
     name: gleh-calibre-library
     # This volume stores the Calibre library database and ebooks
     # Shared between Calibre (writes) and Calibre-Web (reads)
+
+  courses_data:
+    driver: local
+    name: gleh-courses
+    # This volume stores MIT OCW and other course content
+    # Upload via SFTP or Docker Desktop volume access
+    # Served directly by nginx for fast static file delivery
 
 ################################################################################
 # NETWORKS - Inter-service Communication
@@ -309,22 +268,12 @@ networks:
 #   - Copy .env.example to .env in the docker directory
 #   - Run: docker-compose up
 #   - Access Flask app at http://localhost
-#   - Access MinIO console at http://localhost:9001 (minioadmin/minioadmin)
 #
 # PRODUCTION DEPLOYMENT:
 #   - Set FLASK_ENV=production
 #   - Set SECRET_KEY to a strong random value
-#   - Set MINIO_ROOT_USER and MINIO_ROOT_PASSWORD to secure values
-#   - Configure SSL certificates for HTTPS (nginx and MinIO)
+#   - Configure SSL certificates for HTTPS (nginx)
 #   - Use environment variables (not .env file) for secrets
-#   - Consider enabling MinIO encryption and versioning
-#
-# MINIO OBJECT STORAGE:
-#   - Buckets are created automatically by src/minio_client.py on startup
-#   - Default bucket: gleh-storage
-#   - Subfolders: courses/, uploads/
-#   - Web console: http://localhost:9001
-#   - API endpoint: http://minio:9000 (internal Docker network)
 #
 # CALIBRE + CALIBRE-WEB:
 #   - Calibre: Ebook library management (http://localhost:8080)
@@ -335,7 +284,7 @@ networks:
 #
 # LEGACY SAMBA INTEGRATION (DEPRECATED - Private fork only):
 #   - Samba configuration has been removed for public 1.0 release
-#   - All file storage now handled by MinIO object storage
+#   - All file storage now handled by Docker volumes
 #   - For private fork: uncomment Samba environment variables
 #
 ################################################################################

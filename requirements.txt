@@ -13,5 +13,4 @@ ffmpeg-python
 structlog
 python-dotenv
 requests  # For Calibre-Web API client
-minio  # MinIO Python client for S3-compatible object storage
 psycopg2-binary  # PostgreSQL adapter for production database

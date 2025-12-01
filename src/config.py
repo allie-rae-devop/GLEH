@@ -43,15 +43,8 @@ class Config:
     # Content directory settings (DEPRECATED - kept for backwards compatibility)
     # CONTENT_DIR: Base directory containing 'courses' and 'ebooks' folders
     # Can be set via CONTENT_DIR environment variable for flexibility
-    # NOTE: For 1.0 release, MinIO is used instead of local filesystem
+    # NOTE: Courses are now served from Docker volumes via nginx
     CONTENT_DIR = os.environ.get('CONTENT_DIR')
-
-    # MinIO Object Storage settings
-    MINIO_ENDPOINT = os.environ.get('MINIO_ENDPOINT', 'localhost:9000')
-    MINIO_ACCESS_KEY = os.environ.get('MINIO_ACCESS_KEY', 'minioadmin')
-    MINIO_SECRET_KEY = os.environ.get('MINIO_SECRET_KEY', 'minioadmin')
-    MINIO_BUCKET = os.environ.get('MINIO_BUCKET', 'gleh-storage')
-    MINIO_SECURE = os.environ.get('MINIO_SECURE', 'false').lower() == 'true'
 
 
 class DevelopmentConfig(Config):
@@ -82,19 +75,12 @@ class DevelopmentConfig(Config):
     else:
         SQLALCHEMY_DATABASE_URI = db_url
 
-    # CONTENT_DIR is now optional (MinIO handles storage)
+    # CONTENT_DIR is now optional (Docker volumes handle storage)
     CONTENT_DIR = os.environ.get('CONTENT_DIR')
 
     # Calibre-Web integration
     CALIBRE_WEB_URL = os.environ.get('CALIBRE_WEB_URL', 'http://localhost:8083')
     CALIBRE_LIBRARY_PATH = os.environ.get('CALIBRE_LIBRARY_PATH')
-
-    # MinIO settings (use defaults for development)
-    MINIO_ENDPOINT = os.environ.get('MINIO_ENDPOINT', 'localhost:9000')
-    MINIO_ACCESS_KEY = os.environ.get('MINIO_ACCESS_KEY', 'minioadmin')
-    MINIO_SECRET_KEY = os.environ.get('MINIO_SECRET_KEY', 'minioadmin')
-    MINIO_BUCKET = os.environ.get('MINIO_BUCKET', 'gleh-storage')
-    MINIO_SECURE = os.environ.get('MINIO_SECURE', 'false').lower() == 'true'
 
 
 class ProductionConfig(Config):
@@ -116,7 +102,7 @@ class ProductionConfig(Config):
             "DATABASE_URL environment variable must be set in production"
         )
 
-    # CONTENT_DIR is now optional (MinIO handles storage for 1.0)
+    # CONTENT_DIR is now optional (Docker volumes handle storage)
     CONTENT_DIR = os.environ.get('CONTENT_DIR')
 
     # Calibre-Web integration
@@ -126,22 +112,6 @@ class ProductionConfig(Config):
             "CALIBRE_WEB_URL must be set in production .env file"
         )
     CALIBRE_LIBRARY_PATH = os.environ.get('CALIBRE_LIBRARY_PATH')
-
-    # MinIO settings (REQUIRED in production)
-    MINIO_ENDPOINT = os.environ.get('MINIO_ENDPOINT')
-    if not MINIO_ENDPOINT:
-        raise ValueError("MINIO_ENDPOINT must be set in production")
-
-    MINIO_ACCESS_KEY = os.environ.get('MINIO_ACCESS_KEY')
-    if not MINIO_ACCESS_KEY:
-        raise ValueError("MINIO_ACCESS_KEY must be set in production")
-
-    MINIO_SECRET_KEY = os.environ.get('MINIO_SECRET_KEY')
-    if not MINIO_SECRET_KEY:
-        raise ValueError("MINIO_SECRET_KEY must be set in production")
-
-    MINIO_BUCKET = os.environ.get('MINIO_BUCKET', 'gleh-storage')
-    MINIO_SECURE = os.environ.get('MINIO_SECURE', 'true').lower() == 'true'  # Default to secure in production
 
     # Session Security - Production Hardening (OWASP A02:2021, A07:2021)
     # Enforce HTTPS-only transmission (prevents MitM session hijacking)

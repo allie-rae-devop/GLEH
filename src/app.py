@@ -60,7 +60,6 @@ login_manager.login_view = 'index'
 from .models import User, Course, Ebook, CourseProgress, CourseNote, ReadingProgress, EbookNote, CalibreReadingProgress
 from .admin_api import admin_bp
 from .calibre_client import get_calibre_client
-from .minio_client import get_minio_client
 
 @login_manager.user_loader
 def load_user(user_id):
@@ -453,13 +452,22 @@ def serve_course_files(filepath):
     """Serves course files from the courses directory."""
     from flask import send_from_directory
     import os
-    # Serve files from the configured content directory
+    # In Docker: serve from /app/data/courses (volume mount)
+    # In development: serve from CONTENT_DIR/courses
     content_dir = app.config.get('CONTENT_DIR')
-    if not content_dir:
-        log.error('CONTENT_DIR not configured')
-        abort(500)
-    courses_dir = os.path.join(content_dir, 'courses')
+    if content_dir:
+        # Development mode: use configured CONTENT_DIR
+        courses_dir = os.path.join(content_dir, 'courses')
+    else:
+        # Docker mode: use hardcoded volume path
+        courses_dir = '/app/data/courses'
+
+    if not os.path.exists(courses_dir):
+        log.error(f'Courses directory does not exist: {courses_dir}')
+        abort(404)
+
     return send_from_directory(courses_dir, filepath)
+
 
 @app.route('/admin')
 @login_required
@@ -493,7 +501,7 @@ def get_content():
             'type': 'course', 'uid': course.uid, 'title': course.title,
             'path': url_for('course_page', uid=course.uid),
             'description': course.description, 'categories': course.categories.split(',') if course.categories else [],
-            'thumbnail': url_for('static', filename=course.thumbnail) if course.thumbnail and 'default' not in course.thumbnail else '',
+            'thumbnail': course.thumbnail_url if course.thumbnail and 'default' not in (course.thumbnail or '') else '',
             'user_progress': user_progress.get(course.id, 'Not Started'),
             'user_note': user_notes.get(course.id, '')
         })
@@ -911,27 +919,24 @@ def upload_avatar():
     except Exception as e:
         return jsonify({'error': f'Invalid or corrupted image file: {str(e)}'}), 400
 
-    # Save file to MinIO object storage
+    # Save file to local filesystem (static/avatars directory)
     filename = secure_filename(f"{current_user.id}_{file.filename}")
-    object_name = f"uploads/avatars/{filename}"
 
     try:
-        # Get MinIO client
-        minio_client = get_minio_client()
+        # Ensure avatars directory exists
+        avatars_dir = os.path.join(app.static_folder, 'avatars')
+        os.makedirs(avatars_dir, exist_ok=True)
 
-        # Upload file to MinIO
-        file.seek(0)  # Reset stream position
-        minio_client.upload_werkzeug_file(
-            file=file,
-            object_name=object_name
-        )
+        # Save file to filesystem
+        filepath = os.path.join(avatars_dir, filename)
+        file.save(filepath)
 
         # Update user avatar
         current_user.avatar = filename
         db.session.commit()
 
     except Exception as e:
-        log.error(f"Failed to upload avatar to MinIO: {e}")
+        log.error(f"Failed to upload avatar: {e}")
         return jsonify({'error': 'Failed to upload avatar'}), 500
 
     # Log successful upload
@@ -950,34 +955,27 @@ def upload_avatar():
 
 @app.route('/avatars/<filename>')
 def serve_avatar(filename):
-    """Serve avatar from MinIO object storage"""
+    """Serve avatar from local filesystem (static/avatars directory)"""
     # Sanitize filename
     filename = secure_filename(filename)
-    object_name = f"uploads/avatars/{filename}"
+    avatars_dir = os.path.join(app.static_folder, 'avatars')
+    filepath = os.path.join(avatars_dir, filename)
 
     try:
-        # Get MinIO client
-        minio_client = get_minio_client()
-
-        # Check if file exists in MinIO
-        if not minio_client.file_exists(object_name):
+        # Check if file exists locally
+        if not os.path.exists(filepath):
             # Fallback to default avatar
-            return send_from_directory(app.static_folder, 'avatars/default_avatar.svg')
+            return send_from_directory(os.path.join(app.static_folder, 'avatars'), 'default_avatar.svg')
 
-        # Get file from MinIO
-        file_data = minio_client.download_file(object_name)
-        file_info = minio_client.get_file_info(object_name)
-
-        # Create response with file data
-        response = make_response(file_data)
-        response.headers['Content-Type'] = file_info.get('content_type', 'image/jpeg')
+        # Serve the file from filesystem
+        response = send_from_directory(avatars_dir, filename)
         response.headers['Cache-Control'] = 'public, max-age=3600'  # Cache for 1 hour
         return response
 
     except Exception as e:
-        log.error(f"Failed to serve avatar from MinIO: {e}")
+        log.error(f"Failed to serve avatar: {e}")
         # Fallback to default avatar on error
-        return send_from_directory(app.static_folder, 'avatars/default_avatar.svg')
+        return send_from_directory(os.path.join(app.static_folder, 'avatars'), 'default_avatar.svg')
 
 # --- Ebook Reader Routes ---
 # MIGRATED TO CALIBRE-WEB: Custom ebook reader replaced by Calibre-Web with Nginx SSO

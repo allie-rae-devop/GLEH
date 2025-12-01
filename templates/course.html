@@ -147,7 +147,7 @@
                 <div class="card" style="background-color: var(--bs-tertiary-bg);">
                     <div class="row g-0" style="height: 100%;">
                         <div class="col-md-4 thumbnail-container">
-                            <img src="{{ url_for('static', filename=course.thumbnail) }}"
+                            <img src="{{ course.thumbnail_url }}"
                                  class="img-fluid rounded-start"
                                  alt="{{ course.title }} thumbnail"
                                  style="width: 100%; height: 100%; object-fit: cover;">
@@ -171,7 +171,40 @@
                         <div class="col-md-8">
                             <div class="card-body d-flex flex-column">
                                 <h1 class="card-title h3">{{ course.title }}</h1>
+
+                                {% if course.course_number or course.instructor %}
+                                <div class="mb-2">
+                                    {% if course.course_number %}
+                                    <span class="badge bg-primary me-1">{{ course.course_number }}</span>
+                                    {% endif %}
+                                    {% if course.term and course.year %}
+                                    <span class="badge bg-secondary me-1">{{ course.term }} {{ course.year }}</span>
+                                    {% endif %}
+                                    {% if course.level %}
+                                    <span class="badge bg-info">{{ course.level }}</span>
+                                    {% endif %}
+                                </div>
+                                {% if course.instructor %}
+                                <p class="text-muted small mb-2">
+                                    <strong>Instructor:</strong> {{ course.instructor }}
+                                </p>
+                                {% endif %}
+                                {% endif %}
+
                                 <p class="card-text flex-grow-1">{{ course.description }}</p>
+
+                                {% if course.license_url %}
+                                <div class="mt-auto mb-2 pt-2 border-top">
+                                    <small class="text-muted d-block">
+                                        <strong>MIT OpenCourseWare</strong><br>
+                                        This content is provided under a
+                                        <a href="{{ course.license_url }}" target="_blank" class="text-decoration-none">
+                                            Creative Commons License
+                                        </a>
+                                    </small>
+                                </div>
+                                {% endif %}
+
                                 <div class="mt-2">
                                     <small class="text-muted">
                                         Status: <span id="current-status" class="fw-bold">Not Started</span>
