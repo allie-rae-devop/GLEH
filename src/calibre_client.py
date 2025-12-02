@@ -273,7 +273,7 @@ class CalibreWebClient:
             # Extract publication date
             published = entry.findtext('atom:published', '', ATOM_NS) or entry.findtext('atom:updated', '', ATOM_NS)
 
-            # Extract cover URL from links
+            # Extract cover URL from links (use external_url for browser access)
             cover_url = self.get_cover_url(book_id)
             for link in entry.findall('atom:link', ATOM_NS):
                 rel = link.get('rel', '')
@@ -282,7 +282,8 @@ class CalibreWebClient:
                     if href.startswith('http'):
                         cover_url = href
                     elif href.startswith('/'):
-                        cover_url = f"{self.base_url}{href}"
+                        # Use external_url for browser-accessible URLs
+                        cover_url = f"{self.external_url}{href}"
                     break
 
             return {
