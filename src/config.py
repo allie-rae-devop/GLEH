@@ -80,6 +80,7 @@ class DevelopmentConfig(Config):
 
     # Calibre-Web integration
     CALIBRE_WEB_URL = os.environ.get('CALIBRE_WEB_URL', 'http://localhost:8083')
+    CALIBRE_WEB_EXTERNAL_URL = os.environ.get('CALIBRE_WEB_EXTERNAL_URL', os.environ.get('CALIBRE_WEB_URL', 'http://localhost:8083'))
     CALIBRE_LIBRARY_PATH = os.environ.get('CALIBRE_LIBRARY_PATH')
 
 
@@ -111,6 +112,7 @@ class ProductionConfig(Config):
         raise ValueError(
             "CALIBRE_WEB_URL must be set in production .env file"
         )
+    CALIBRE_WEB_EXTERNAL_URL = os.environ.get('CALIBRE_WEB_EXTERNAL_URL', CALIBRE_WEB_URL)
     CALIBRE_LIBRARY_PATH = os.environ.get('CALIBRE_LIBRARY_PATH')
 
     # Session Security - Production Hardening (OWASP A02:2021, A07:2021)

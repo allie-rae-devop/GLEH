@@ -26,13 +26,15 @@ ATOM_NS = {'atom': 'http://www.w3.org/2005/Atom',
 class CalibreWebClient:
     """Client for interacting with Calibre-Web via OPDS feeds."""
 
-    def __init__(self, base_url: Optional[str] = None):
+    def __init__(self, base_url: Optional[str] = None, external_url: Optional[str] = None):
         """
         Initialize Calibre-Web OPDS client.
 
         Args:
-            base_url: Base URL of Calibre-Web instance (e.g., http://localhost:8083)
+            base_url: Internal base URL of Calibre-Web (e.g., http://calibre-web:8083 for Docker)
                      If not provided, reads from CALIBRE_WEB_URL env var or Flask config
+            external_url: External base URL for browser access (e.g., http://localhost:8083)
+                         If not provided, reads from CALIBRE_WEB_EXTERNAL_URL or uses base_url
         """
         self.base_url = base_url or self._get_base_url()
         if not self.base_url:
@@ -43,6 +45,11 @@ class CalibreWebClient:
 
         # Remove trailing slash for consistent URL construction
         self.base_url = self.base_url.rstrip('/')
+
+        # External URL for browser-facing links (covers, readers)
+        self.external_url = external_url or self._get_external_url() or self.base_url
+        self.external_url = self.external_url.rstrip('/')
+
         self.session = requests.Session()
         self.session.headers.update({
             'User-Agent': 'GLEH/1.0 Calibre-Web OPDS Client'
@@ -56,6 +63,15 @@ class CalibreWebClient:
         except RuntimeError:
             # Not in Flask app context, try environment variable
             return os.environ.get('CALIBRE_WEB_URL')
+
+    def _get_external_url(self) -> Optional[str]:
+        """Get Calibre-Web external URL from environment or Flask config."""
+        # Try Flask config first (if in app context)
+        try:
+            return current_app.config.get('CALIBRE_WEB_EXTERNAL_URL')
+        except RuntimeError:
+            # Not in Flask app context, try environment variable
+            return os.environ.get('CALIBRE_WEB_EXTERNAL_URL')
 
     def get_books(self, limit: int = 100, offset: int = 0) -> List[Dict]:
         """
@@ -164,9 +180,9 @@ class CalibreWebClient:
             book_id: Calibre book ID
 
         Returns:
-            URL to book cover image
+            URL to book cover image (uses external URL for browser access)
         """
-        return f"{self.base_url}/cover/{book_id}"
+        return f"{self.external_url}/cover/{book_id}"
 
     def get_reader_url(self, book_id: int) -> str:
         """
@@ -176,9 +192,9 @@ class CalibreWebClient:
             book_id: Calibre book ID
 
         Returns:
-            URL to Calibre-Web reader
+            URL to Calibre-Web reader (uses external URL for browser access)
         """
-        return f"{self.base_url}/read/{book_id}/epub"
+        return f"{self.external_url}/read/{book_id}/epub"
 
     def _parse_opds_feed(self, root: ET.Element) -> List[Dict]:
         """

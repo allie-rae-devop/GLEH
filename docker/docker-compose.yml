@@ -82,8 +82,11 @@ services:
       # Database Configuration
       DATABASE_URL: postgresql://${DB_USER:-gleh_user}:${DB_PASSWORD:-change_me_in_production}@db:5432/${DB_NAME:-gleh_db}
 
-      # Calibre-Web Integration (Docker network name)
+      # Calibre-Web Integration
+      # Internal URL for API calls (Docker network)
       CALIBRE_WEB_URL: ${CALIBRE_WEB_URL:-http://calibre-web:8083}
+      # External URL for browser access (covers and reader)
+      CALIBRE_WEB_EXTERNAL_URL: ${CALIBRE_WEB_EXTERNAL_URL:-http://localhost:8083}
 
       # Security
       SECRET_KEY: ${SECRET_KEY:-change_me_in_production}
