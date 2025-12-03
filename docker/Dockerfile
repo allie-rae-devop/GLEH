@@ -63,6 +63,10 @@ COPY templates /app/templates
 COPY static /app/static
 COPY scripts /app/scripts
 
+# Create directories for volume mounts
+RUN mkdir -p /app/data/courses /app/logs && \
+    chmod 755 /app/data /app/data/courses /app/logs
+
 # Create non-root user for security
 RUN useradd -m -u 1000 gleh && \
     chown -R gleh:gleh /app
