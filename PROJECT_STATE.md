@@ -42,6 +42,105 @@ Before making ANY changes, verify:
 
 **Key**: Bind mounts are acceptable for **configuration/source files** (in git), NOT for **runtime data**.
 
+## Admin Control Panel
+
+**Version**: 2.0 (Refactored 2025-12-03)
+**Access**: http://localhost:3080/admin (requires admin login)
+
+### Architecture Changes
+
+The admin panel was completely refactored to support the new Calibre-Web integration:
+
+- **Removed**: Textbooks tab (managed via Calibre-Web port 8083)
+- **Removed**: Layout Editor tab (deprecated functionality)
+- **Renamed**: "Server & Diagnostics" → "Diagnostics"
+- **Enhanced**: All tabs modernized with new functionality
+
+### Current Tabs
+
+#### 1. Dashboard
+- System statistics (courses, ebooks, users)
+- Quick access links to Calibre Desktop (8080) and Calibre-Web (8083)
+- **Environment Configuration Editor**: Read/write `.env` variables via UI
+  - Load, edit, add, delete environment variables
+  - Warning: Changes require server restart
+
+#### 2. Courses
+- **Drag & Drop Upload**: Upload course .zip files directly to gleh-courses volume
+- **Bulk Operations**:
+  - Scan Course Directory: Import courses from volume
+  - Generate Thumbnails: Create missing thumbnails
+  - Auto-Categorize: Assign categories based on course titles
+- **Course Library Table**: View, manage, and delete courses
+
+#### 3. Diagnostics
+- **System Status**: Real-time health monitoring (DB, volumes, directories)
+- **Server Control**: Restart server instructions
+- **Maintenance Scripts**: Run init_database.py and import_courses_from_volume.py
+- **Self-Healing Diagnostics**: Automated health checks with repair suggestions
+- **Application Logs**: View recent logs or Docker stdout
+
+#### 4. Users
+- **Create User**: Form to add new users (standard or admin)
+- **Seed Test Users**: One-click creation of 3 test accounts
+- **User Table**: View all users with admin status
+- **Password Reset**: Admin function to reset any user's password
+- **Delete User**: Remove user accounts (admin protected)
+
+#### 5. About
+- **Content Editor**: Markdown text area for About page content
+- Saves to `data/about_content.md`
+- Load and save content via API
+
+### API Endpoints
+
+All admin endpoints require authentication and admin privileges:
+
+**Dashboard**: `/api/admin/status`, `/api/admin/env-config`
+**Courses**: `/api/admin/scan-courses`, `/api/admin/get-courses`, `/api/admin/upload-course`, `/api/admin/delete-course/<id>`
+**Diagnostics**: `/api/admin/diagnostics`, `/api/admin/run-script`, `/api/admin/self-heal`, `/api/admin/logs`
+**Users**: `/api/admin/users`, `/api/admin/create-user`, `/api/admin/delete-user`, `/api/admin/reset-password`, `/api/admin/seed-test-users`
+**About**: `/api/admin/about-content`
+
+### Files Modified
+
+- `src/admin_api.py` - Complete rewrite of admin API routes
+- `templates/admin.html` - New 5-tab interface with Bootstrap 5
+- `static/js/admin.js` - Refactored JavaScript for all admin functionality
+
+### Documentation
+
+- **User Guide**: `docs/admin-panel-readme.md` (comprehensive guide for admins)
+- **API Reference**: See admin-panel-readme.md for endpoint details
+
+### Security Notes
+
+- All endpoints require `@admin_required` decorator
+- CSRF protection on all POST/DELETE operations
+- Admin user cannot be deleted (protected)
+- Environment config changes show warning about server restart
+- Script execution whitelist prevents arbitrary code execution
+
+### Default Credentials
+
+**⚠️ CHANGE IMMEDIATELY AFTER FIRST LOGIN**
+- Username: `admin`
+- Password: `admin123`
+
+### Testing Checklist
+
+After deployment, verify:
+1. ✅ Dashboard loads and shows correct statistics
+2. ✅ Environment config can be loaded and saved
+3. ✅ Course upload works (drag & drop and browse)
+4. ✅ Scan courses detects existing courses in volume
+5. ✅ Diagnostics shows healthy system status
+6. ✅ Self-healing diagnostics runs without errors
+7. ✅ Maintenance scripts execute successfully
+8. ✅ Users can be created, passwords reset, and deleted
+9. ✅ Test users seed correctly
+10. ✅ About content can be edited and saved
+
 ## Environment Configuration
 
 ### Structure (DO NOT CONFUSE THESE)

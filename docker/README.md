@@ -27,9 +27,9 @@ The deployment script automatically:
 - Checks Docker prerequisites
 - Creates `.env` from template
 - Builds all Docker images
-- Starts all 6 services (PostgreSQL, MinIO, Calibre, Calibre-Web, Flask, Nginx)
-- Initializes MinIO storage
+- Starts all 5 services (PostgreSQL, Calibre, Calibre-Web, Flask, Nginx)
 - Creates database and admin user
+- Initializes Docker volumes
 
 ## Services
 
@@ -38,7 +38,6 @@ This Docker Compose stack includes:
 - **web** - Flask application (Waitress WSGI server)
 - **nginx** - Nginx reverse proxy and static file server
 - **db** - PostgreSQL database
-- **minio** - MinIO object storage (S3-compatible)
 - **calibre** - Calibre ebook server
 - **calibre-web** - Calibre-Web ebook management UI
 
