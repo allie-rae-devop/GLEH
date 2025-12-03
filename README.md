@@ -15,67 +15,52 @@ This project represents a **"Human-in-the-Loop" AI development workflow**.
 
 A production-ready Flask-based educational platform for managing courses and e-books (EPUB/PDF) with flexible storage configuration, Docker deployment, and comprehensive admin tools.
 
-**Status:** 🟡 Phase 2 In Progress - Preparing for 1.0 Public Release
-**Last Updated:** November 30, 2025
-**Version:** 0.9-beta
+**Status:** 🟢 Production Ready - v2.0
+**Last Updated:** December 3, 2024
+**Version:** 2.0
 
 ---
 
 ## Changelog
 
-### November 30, 2025 - Phase 1 Complete: Calibre-Web Integration ✅
+### December 3, 2024 - Admin Panel v2.0 & Production Release ✅
 
-**Major Milestone:** Transitioned from standalone ebook management to Calibre-Web OPDS API integration
+**Major Milestone:** Complete admin panel refactoring and production deployment preparation
 
-**What Was Accomplished:**
-- ✅ Created Calibre-Web OPDS API client ([src/calibre_client.py](src/calibre_client.py))
-- ✅ Updated homepage to fetch books dynamically from Calibre-Web (http://10.0.10.75:8083)
-- ✅ Replaced static Ebook model with dynamic OPDS feed fetching
-- ✅ Created EbookNote model for textbook notes
-- ✅ Created CalibreReadingProgress model for reading progress tracking
-- ✅ Implemented automatic reading progress tracking on book visits
-- ✅ Created textbook launch page with note-taking functionality
-- ✅ Updated profile page to show ebook notes and reading progress
-- ✅ Fixed profile page bugs (missing imports, old models)
-- ✅ Organized scripts directory with batch file wrappers
-- ✅ Database migrations completed
+**Admin Panel v2.0:**
 
-**Database Changes:**
-- Added: `EbookNote` - User notes for ebooks
-- Added: `CalibreReadingProgress` - Reading progress tracking
-- Deprecated: `Ebook` - Replaced by Calibre-Web OPDS
-- Deprecated: `ReadingProgress` - Replaced by CalibreReadingProgress
+- ✅ Complete rewrite with 5-tab interface (Dashboard, Courses, Diagnostics, Users, About)
+- ✅ Removed deprecated Textbooks and Layout Editor tabs (managed via Calibre-Web)
+- ✅ Environment configuration editor - Edit .env variables via web UI
+- ✅ Drag-and-drop course upload with progress tracking
+- ✅ Self-healing diagnostics with automated health checks
+- ✅ Full user CRUD operations with password reset
+- ✅ About page content editor with markdown support
+- ✅ Comprehensive documentation: [docs/admin-panel-readme.md](docs/admin-panel-readme.md) (630 lines)
 
-**Infrastructure Improvements:**
-- Scripts directory organized with .bat wrappers for PowerShell scripts
-- Samba backup/restore workflow maintained
-- Development workflow streamlined
+**Docker & Deployment:**
 
-**Next Phase: 1.0 Public Release Preparation**
-Five major tasks remaining:
-1. MIT OCW Course Integration (replace copyright-protected courses)
-2. File Hosting Solution (Docker volume mounts or MinIO)
-3. Admin Panel Testing & Implementation
-4. Portfolio About Page & First-Visit Modal
-5. Docker Deployment & Beta Testing
+- ✅ Removed deprecated MinIO - All storage uses Docker volumes
+- ✅ Fixed volume mount paths for course content
+- ✅ Nginx DNS caching issues resolved
+- ✅ Production-ready docker-compose.yml with all 5 services
+- ✅ No hard-coded paths - fully portable deployment
+- ✅ Updated deployment documentation
 
-**Target:** 1.0 Public Release by December 12-17, 2025
+**Infrastructure:**
 
----
+- ✅ PostgreSQL with proper Docker volumes (no bind mounts for data)
+- ✅ Calibre-Web OPDS integration complete with external URL support
+- ✅ Bootstrap 5 dark theme UI across all admin features
+- ✅ CSRF protection on all admin endpoints
+- ✅ Structured logging with correlation IDs
 
-### November 19, 2025 - Phase 1.6: Flask Development Testing
+**Production Deployment:**
 
-**Database Migration:**
-- ✅ Migrated database.db from local laptop to Samba network storage (J:\)
-- ✅ Seeded database with 36 courses and 54 ebooks
-- ✅ Verified Flask can read/write from network storage
-
-**Bug Fixes:**
-1. Flask .env loading - Added `load_dotenv()` to src/app.py
-2. Cross-drive path validation - Added try/except for Windows path comparison
-3. Avatar upload path - Fixed to use `app.static_folder`
-4. EPUB metadata errors - Added file existence checks
-5. CSRF tokens - Added inline CSRF helpers to JavaScript files
+- Ready for R610 server deployment via git clone
+- One-command deployment: `docker-compose up -d`
+- FTP upload support for courses and ebooks
+- Admin panel handles all post-deployment configuration
 
 ---
 
