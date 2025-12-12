@@ -55,7 +55,7 @@ The GLEH Admin Panel is a web-based control center for managing your educational
 
 2. **Running Services**: Ensure Docker containers are running:
    ```bash
-   docker ps --filter "name=gleh-"
+   docker ps --filter "name=edu-"
    ```
 
 3. **Browser**: Modern web browser (Chrome, Firefox, Edge, Safari)
@@ -234,7 +234,7 @@ Run critical maintenance scripts with one click.
 #### Import Courses from Volume
 
 - **Script**: `import_courses_from_volume.py`
-- **Purpose**: Scan and import all courses from the gleh-courses volume
+- **Purpose**: Scan and import all courses from the edu-courses volume
 - **When to Use**:
   - After manually copying courses to the volume
   - When courses exist in volume but not in database
@@ -272,7 +272,7 @@ View recent application logs for debugging.
 
 **Log Location**:
 - Docker: `/app/logs/app.log` (if volume mounted)
-- Alternative: Use `docker logs gleh-web` command
+- Alternative: Use `docker logs edu-web` command
 
 **Features**:
 - Displays last 50 log lines
@@ -432,9 +432,9 @@ After first deployment:
 4. Click "Scan Course Directory" to import
 
 **Method 2: Docker Volume**
-1. Copy course folder to gleh-courses volume:
+1. Copy course folder to edu-courses volume:
    ```bash
-   docker cp /path/to/course gleh-web:/app/data/courses/
+   docker cp /path/to/course edu-web:/app/data/courses/
    ```
 2. Admin Panel → Courses → Scan Course Directory
 3. Course appears in table
@@ -454,17 +454,17 @@ Before making major changes:
 
 1. **Export .env file**:
    ```bash
-   docker cp gleh-web:/app/.env ./env-backup-$(date +%Y%m%d).txt
+   docker cp edu-web:/app/.env ./env-backup-$(date +%Y%m%d).txt
    ```
 
 2. **Backup Database**:
    ```bash
-   docker exec gleh-postgres pg_dump -U gleh_user gleh_db > backup.sql
+   docker exec edu-postgres pg_dump -U edu_user edu_db > backup.sql
    ```
 
 3. **Backup Courses**:
    ```bash
-   docker run --rm -v gleh-courses:/data -v $(pwd):/backup alpine tar czf /backup/courses-backup.tar.gz /data
+   docker run --rm -v edu-courses:/data -v $(pwd):/backup alpine tar czf /backup/courses-backup.tar.gz /data
    ```
 
 ---
@@ -478,11 +478,11 @@ Before making major changes:
 **Checks**:
 1. Verify you're logged in as admin:
    ```sql
-   docker exec gleh-postgres psql -U gleh_user -d gleh_db -c "SELECT username, is_admin FROM user;"
+   docker exec edu-postgres psql -U edu_user -d edu_db -c "SELECT username, is_admin FROM user;"
    ```
 2. If admin user missing, run init_database.py
 3. Clear browser cache and cookies
-4. Check Flask logs: `docker logs gleh-web --tail 50`
+4. Check Flask logs: `docker logs edu-web --tail 50`
 
 ### Environment Config Not Saving
 
@@ -500,10 +500,10 @@ Before making major changes:
 
 **Checks**:
 1. Verify `.zip` file is not corrupted
-2. Check disk space: `docker exec gleh-web df -h`
+2. Check disk space: `docker exec edu-web df -h`
 3. Ensure courses volume is mounted:
    ```bash
-   docker inspect gleh-web | grep -A 5 "Mounts"
+   docker inspect edu-web | grep -A 5 "Mounts"
    ```
 4. Check max upload size in nginx config
 
@@ -514,13 +514,13 @@ Before making major changes:
 **Fixes**:
 1. Verify scripts exist:
    ```bash
-   docker exec gleh-web ls -la /app/scripts/
+   docker exec edu-web ls -la /app/scripts/
    ```
 2. Check script permissions (should be executable)
 3. Increase timeout if script takes >5 minutes
 4. Run script manually to see full output:
    ```bash
-   docker exec gleh-web python scripts/init_database.py
+   docker exec edu-web python scripts/init_database.py
    ```
 
 ### Self-Healing Shows Errors
@@ -528,10 +528,10 @@ Before making major changes:
 **Database Connectivity Error**:
 - Check if PostgreSQL container is running
 - Verify DATABASE_URL in environment config
-- Test connection: `docker exec gleh-postgres pg_isready`
+- Test connection: `docker exec edu-postgres pg_isready`
 
 **Courses Volume Error**:
-- Verify volume exists: `docker volume ls | grep gleh-courses`
+- Verify volume exists: `docker volume ls | grep edu-courses`
 - Check volume mount in docker-compose.yml
 - Recreate volume if needed (data loss warning)
 

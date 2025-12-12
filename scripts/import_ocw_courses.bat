@@ -1,6 +1,6 @@
 @echo off
 REM Import courses from Docker volume to database
-REM This script runs the Python import inside the gleh-web container
+REM This script runs the Python import inside the edu-web container
 
 echo ================================================================================
 echo Course Importer - Docker Volume
@@ -9,7 +9,7 @@ echo.
 
 REM Copy the Python script into the container
 echo Copying import script to container...
-docker cp scripts\import_courses_from_volume.py gleh-web:/tmp/import_courses_from_volume.py
+docker cp scripts\import_courses_from_volume.py edu-web:/tmp/import_courses_from_volume.py
 if %ERRORLEVEL% NEQ 0 (
     echo ERROR: Failed to copy script to container
     exit /b 1
@@ -17,7 +17,7 @@ if %ERRORLEVEL% NEQ 0 (
 
 echo Running import inside Docker container...
 echo.
-docker exec gleh-web python /tmp/import_courses_from_volume.py
+docker exec edu-web python /tmp/import_courses_from_volume.py
 if %ERRORLEVEL% NEQ 0 (
     echo ERROR: Import failed
     exit /b 1
@@ -25,7 +25,7 @@ if %ERRORLEVEL% NEQ 0 (
 
 echo.
 echo Cleaning up...
-docker exec gleh-web rm /tmp/import_courses_from_volume.py
+docker exec edu-web rm /tmp/import_courses_from_volume.py
 
 echo.
 echo ================================================================================
