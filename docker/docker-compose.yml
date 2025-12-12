@@ -100,7 +100,7 @@ services:
       - "127.0.0.1:5000:5000"  # Internal only - use Nginx for external access
     volumes:
       # Course materials served directly by nginx
-      - courses_data:/app/data/courses:ro
+      - courses_data:/app/data/courses:rw
       # Application logs
       - app_logs:/app/logs:rw
 
