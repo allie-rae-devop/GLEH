@@ -37,65 +37,65 @@ echo ------------------------------------------------------------------------
 
 set all_ok=true
 
-REM Check gleh-postgres
-docker ps --format "{{.Names}}" | findstr "gleh-postgres" >nul 2>&1
+REM Check edu-postgres
+docker ps --format "{{.Names}}" | findstr "edu-postgres" >nul 2>&1
 if errorlevel 1 (
-    echo   [ERROR] gleh-postgres: not running
+    echo   [ERROR] edu-postgres: not running
     set all_ok=false
 ) else (
-    for /f "tokens=*" %%i in ('docker ps --format "{{.Status}}" --filter "name=^gleh-postgres$"') do set status=%%i
+    for /f "tokens=*" %%i in ('docker ps --format "{{.Status}}" --filter "name=^edu-postgres$"') do set status=%%i
     echo !status! | findstr /i "healthy" >nul 2>&1
     if errorlevel 1 (
-        echo   [WARNING] gleh-postgres: !status!
+        echo   [WARNING] edu-postgres: !status!
     ) else (
-        echo   [OK] gleh-postgres: healthy
+        echo   [OK] edu-postgres: healthy
     )
 )
 
-REM Check gleh-web
-docker ps --format "{{.Names}}" | findstr "gleh-web" >nul 2>&1
+REM Check edu-web
+docker ps --format "{{.Names}}" | findstr "edu-web" >nul 2>&1
 if errorlevel 1 (
-    echo   [ERROR] gleh-web: not running
+    echo   [ERROR] edu-web: not running
     set all_ok=false
 ) else (
-    for /f "tokens=*" %%i in ('docker ps --format "{{.Status}}" --filter "name=^gleh-web$"') do set status=%%i
+    for /f "tokens=*" %%i in ('docker ps --format "{{.Status}}" --filter "name=^edu-web$"') do set status=%%i
     echo !status! | findstr /i "healthy" >nul 2>&1
     if errorlevel 1 (
-        echo   [WARNING] gleh-web: !status!
+        echo   [WARNING] edu-web: !status!
     ) else (
-        echo   [OK] gleh-web: healthy
+        echo   [OK] edu-web: healthy
     )
 )
 
-REM Check gleh-nginx
-docker ps --format "{{.Names}}" | findstr "gleh-nginx" >nul 2>&1
+REM Check edu-nginx
+docker ps --format "{{.Names}}" | findstr "edu-nginx" >nul 2>&1
 if errorlevel 1 (
-    echo   [ERROR] gleh-nginx: not running
+    echo   [ERROR] edu-nginx: not running
     set all_ok=false
 ) else (
-    for /f "tokens=*" %%i in ('docker ps --format "{{.Status}}" --filter "name=^gleh-nginx$"') do set status=%%i
+    for /f "tokens=*" %%i in ('docker ps --format "{{.Status}}" --filter "name=^edu-nginx$"') do set status=%%i
     echo !status! | findstr /i "healthy" >nul 2>&1
     if errorlevel 1 (
-        echo   [WARNING] gleh-nginx: !status!
+        echo   [WARNING] edu-nginx: !status!
     ) else (
-        echo   [OK] gleh-nginx: healthy
+        echo   [OK] edu-nginx: healthy
     )
 )
 
-REM Check gleh-calibre (optional)
-docker ps --format "{{.Names}}" | findstr "gleh-calibre$" >nul 2>&1
+REM Check edu-calibre (optional)
+docker ps --format "{{.Names}}" | findstr "edu-calibre$" >nul 2>&1
 if errorlevel 1 (
-    echo   [WARNING] gleh-calibre: not running ^(optional^)
+    echo   [WARNING] edu-calibre: not running ^(optional^)
 ) else (
-    echo   [OK] gleh-calibre: running
+    echo   [OK] edu-calibre: running
 )
 
-REM Check gleh-calibre-web (optional)
-docker ps --format "{{.Names}}" | findstr "gleh-calibre-web" >nul 2>&1
+REM Check edu-calibre-web (optional)
+docker ps --format "{{.Names}}" | findstr "edu-calibre-web" >nul 2>&1
 if errorlevel 1 (
-    echo   [WARNING] gleh-calibre-web: not running ^(optional^)
+    echo   [WARNING] edu-calibre-web: not running ^(optional^)
 ) else (
-    echo   [OK] gleh-calibre-web: running
+    echo   [OK] edu-calibre-web: running
 )
 
 REM Check database initialization
@@ -103,19 +103,19 @@ echo.
 echo Database Status:
 echo ------------------------------------------------------------------------
 
-docker exec gleh-postgres pg_isready -U gleh_user -d gleh_db >nul 2>&1
+docker exec edu-postgres pg_isready -U edu_user -d edu_db >nul 2>&1
 if errorlevel 1 (
     echo   [ERROR] Cannot connect to PostgreSQL
     set all_ok=false
 ) else (
     echo   [OK] PostgreSQL connection: OK
-    docker exec gleh-postgres psql -U gleh_user -d gleh_db -c "SELECT 1 FROM \"user\" LIMIT 1" >nul 2>&1
+    docker exec edu-postgres psql -U edu_user -d edu_db -c "SELECT 1 FROM \"user\" LIMIT 1" >nul 2>&1
     if errorlevel 1 (
         echo   [ERROR] Database not initialized
-        echo   Run: docker exec gleh-web python scripts/init_database.py
+        echo   Run: docker exec edu-web python scripts/init_database.py
         set all_ok=false
     ) else (
-        for /f %%i in ('docker exec gleh-postgres psql -U gleh_user -d gleh_db -t -c "SELECT COUNT(*) FROM \"user\""') do set user_count=%%i
+        for /f %%i in ('docker exec edu-postgres psql -U edu_user -d edu_db -t -c "SELECT COUNT(*) FROM \"user\""') do set user_count=%%i
         echo   [OK] Database initialized: !user_count! users
     )
 )
@@ -125,7 +125,7 @@ echo.
 echo Web Application Status:
 echo ------------------------------------------------------------------------
 
-docker exec gleh-web curl -sf http://localhost:5000/health >nul 2>&1
+docker exec edu-web curl -sf http://localhost:5000/health >nul 2>&1
 if errorlevel 1 (
     echo   [ERROR] Flask health check failed
     set all_ok=false
@@ -146,32 +146,32 @@ echo.
 echo Volume Status:
 echo ------------------------------------------------------------------------
 
-docker volume ls --format "{{.Name}}" | findstr "gleh-postgres-data" >nul 2>&1
+docker volume ls --format "{{.Name}}" | findstr "edu-postgres-data" >nul 2>&1
 if errorlevel 1 (
-    echo   [WARNING] gleh-postgres-data: not created
+    echo   [WARNING] edu-postgres-data: not created
 ) else (
-    echo   [OK] gleh-postgres-data
+    echo   [OK] edu-postgres-data
 )
 
-docker volume ls --format "{{.Name}}" | findstr "gleh-app-logs" >nul 2>&1
+docker volume ls --format "{{.Name}}" | findstr "edu-app-logs" >nul 2>&1
 if errorlevel 1 (
-    echo   [WARNING] gleh-app-logs: not created
+    echo   [WARNING] edu-app-logs: not created
 ) else (
-    echo   [OK] gleh-app-logs
+    echo   [OK] edu-app-logs
 )
 
-docker volume ls --format "{{.Name}}" | findstr "gleh-calibre-library" >nul 2>&1
+docker volume ls --format "{{.Name}}" | findstr "edu-calibre-library" >nul 2>&1
 if errorlevel 1 (
-    echo   [WARNING] gleh-calibre-library: not created
+    echo   [WARNING] edu-calibre-library: not created
 ) else (
-    echo   [OK] gleh-calibre-library
+    echo   [OK] edu-calibre-library
 )
 
-docker volume ls --format "{{.Name}}" | findstr "gleh-courses" >nul 2>&1
+docker volume ls --format "{{.Name}}" | findstr "edu-courses" >nul 2>&1
 if errorlevel 1 (
-    echo   [WARNING] gleh-courses: not created
+    echo   [WARNING] edu-courses: not created
 ) else (
-    echo   [OK] gleh-courses
+    echo   [OK] edu-courses
 )
 
 REM Summary

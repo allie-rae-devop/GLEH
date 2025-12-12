@@ -68,11 +68,11 @@ RUN mkdir -p /app/data/courses /app/logs && \
     chmod 755 /app/data /app/data/courses /app/logs
 
 # Create non-root user for security
-RUN useradd -m -u 1000 gleh && \
-    chown -R gleh:gleh /app
+RUN useradd -m -u 1000 edu && \
+    chown -R edu:edu /app
 
 # Switch to non-root user
-USER gleh
+USER edu
 
 # Expose port (internal communication with Nginx)
 EXPOSE 5000

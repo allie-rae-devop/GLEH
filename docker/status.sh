@@ -38,7 +38,7 @@ echo
 echo -e "${BLUE}Container Status:${NC}"
 echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
 
-declare -a containers=("gleh-postgres" "gleh-web" "gleh-nginx" "gleh-calibre" "gleh-calibre-web")
+declare -a containers=("edu-postgres" "edu-web" "edu-nginx" "edu-calibre" "edu-calibre-web")
 declare -a required=("yes" "yes" "yes" "no" "no")
 all_ok=true
 
@@ -71,15 +71,15 @@ echo
 echo -e "${BLUE}Database Status:${NC}"
 echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
 
-if docker exec gleh-postgres pg_isready -U gleh_user -d gleh_db &>/dev/null; then
+if docker exec edu-postgres pg_isready -U edu_user -d edu_db &>/dev/null; then
     echo -e "  ${GREEN}✓${NC} PostgreSQL connection: ${GREEN}OK${NC}"
 
-    if docker exec gleh-postgres psql -U gleh_user -d gleh_db -c "SELECT 1 FROM \"user\" LIMIT 1" &>/dev/null; then
-        user_count=$(docker exec gleh-postgres psql -U gleh_user -d gleh_db -t -c "SELECT COUNT(*) FROM \"user\"" 2>/dev/null | tr -d ' ')
+    if docker exec edu-postgres psql -U edu_user -d edu_db -c "SELECT 1 FROM \"user\" LIMIT 1" &>/dev/null; then
+        user_count=$(docker exec edu-postgres psql -U edu_user -d edu_db -t -c "SELECT COUNT(*) FROM \"user\"" 2>/dev/null | tr -d ' ')
         echo -e "  ${GREEN}✓${NC} Database initialized: ${GREEN}${user_count} users${NC}"
     else
         echo -e "  ${RED}✗${NC} Database not initialized"
-        echo -e "    ${YELLOW}Run:${NC} docker exec gleh-web python scripts/init_database.py"
+        echo -e "    ${YELLOW}Run:${NC} docker exec edu-web python scripts/init_database.py"
         all_ok=false
     fi
 else
@@ -92,7 +92,7 @@ echo
 echo -e "${BLUE}Web Application Status:${NC}"
 echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
 
-if docker exec gleh-web curl -sf http://localhost:5000/health &>/dev/null; then
+if docker exec edu-web curl -sf http://localhost:5000/health &>/dev/null; then
     echo -e "  ${GREEN}✓${NC} Flask health check: ${GREEN}OK${NC}"
 else
     echo -e "  ${RED}✗${NC} Flask health check failed"
@@ -111,7 +111,7 @@ echo
 echo -e "${BLUE}Volume Status:${NC}"
 echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
 
-declare -a volumes=("gleh-postgres-data" "gleh-app-logs" "gleh-calibre-library" "gleh-courses")
+declare -a volumes=("edu-postgres-data" "edu-app-logs" "edu-calibre-library" "edu-courses")
 for volume in "${volumes[@]}"; do
     if docker volume ls --format '{{.Name}}' | grep -q "^${volume}$"; then
         echo -e "  ${GREEN}✓${NC} ${volume}"

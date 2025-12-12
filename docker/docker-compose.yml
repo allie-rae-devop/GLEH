@@ -26,10 +26,10 @@ services:
   # =========================================================================
   db:
     image: postgres:15-alpine
-    container_name: gleh-postgres
+    container_name: edu-postgres
     environment:
-      POSTGRES_DB: ${DB_NAME:-gleh_db}
-      POSTGRES_USER: ${DB_USER:-gleh_user}
+      POSTGRES_DB: ${DB_NAME:-edu_db}
+      POSTGRES_USER: ${DB_USER:-edu_user}
       POSTGRES_PASSWORD: ${DB_PASSWORD:-change_me_in_production}
       POSTGRES_INITDB_ARGS: "--encoding=UTF8 --locale=en_US.UTF-8"
     ports:
@@ -40,9 +40,9 @@ services:
       # Optional: SQL initialization scripts
       # - ./db_init:/docker-entrypoint-initdb.d
     networks:
-      - gleh_network
+      - edu_network
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U ${DB_USER:-gleh_user} -d ${DB_NAME:-gleh_db}"]
+      test: ["CMD-SHELL", "pg_isready -U ${DB_USER:-eduuser} -d ${DB_NAME:-edu_db}"]
       interval: 10s
       timeout: 5s
       retries: 5
@@ -65,7 +65,7 @@ services:
       dockerfile: docker/Dockerfile
       args:
         PYTHON_VERSION: "3.11"
-    container_name: gleh-web
+    container_name: edu-web
     depends_on:
       db:
         condition: service_started
@@ -80,7 +80,7 @@ services:
       FLASK_PORT: 5000
 
       # Database Configuration
-      DATABASE_URL: postgresql://${DB_USER:-gleh_user}:${DB_PASSWORD:-change_me_in_production}@db:5432/${DB_NAME:-gleh_db}
+      DATABASE_URL: postgresql://${DB_USER:-edu_user}:${DB_PASSWORD:-change_me_in_production}@db:5432/${DB_NAME:-edu_db}
 
       # Calibre-Web Integration
       # Internal URL for API calls (Docker network)
@@ -93,13 +93,6 @@ services:
       SESSION_COOKIE_SECURE: "true"
       SESSION_COOKIE_HTTPONLY: "true"
       SESSION_COOKIE_SAMESITE: "Lax"
-
-      # Legacy Samba Configuration (DEPRECATED - for private fork only)
-      # SAMBA_HOST: ${SAMBA_HOST}
-      # SAMBA_SHARE: ${SAMBA_SHARE}
-      # SAMBA_USERNAME: ${SAMBA_USERNAME}
-      # SAMBA_PASSWORD: ${SAMBA_PASSWORD}
-      # SAMBA_MOUNT_PATH: ${SAMBA_MOUNT_PATH:-/mnt/gleh-data}
 
       # Logging
       LOG_LEVEL: ${LOG_LEVEL:-INFO}
@@ -114,7 +107,7 @@ services:
       - app_logs:/app/logs:rw
 
     networks:
-      - gleh_network
+      - edu_network
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:5000/health"]
       interval: 30s
@@ -136,19 +129,19 @@ services:
   # =========================================================================
   calibre:
     image: lscr.io/linuxserver/calibre:latest
-    container_name: gleh-calibre
+    container_name: edu-calibre
     environment:
       - PUID=${CALIBRE_PUID:-1024}
       - PGID=${CALIBRE_PGID:-100}
       - TZ=${TZ:-America/Los_Angeles}
-      - PASSWORD=${CALIBRE_PASSWORD:-Camel100}
+      - PASSWORD=${CALIBRE_PASSWORD:-changeme}
     ports:
       - "${CALIBRE_PORT:-8080}:8080"           # Calibre web interface
       - "${CALIBRE_SERVER_PORT:-8081}:8081"    # Calibre content server
     volumes:
       - calibre_library:/config
     networks:
-      - gleh_network
+      - edu_network
     restart: unless-stopped
     deploy:
       resources:
@@ -164,7 +157,7 @@ services:
   # =========================================================================
   calibre-web:
     image: lscr.io/linuxserver/calibre-web:latest
-    container_name: gleh-calibre-web
+    container_name: edu-calibre-web
     depends_on:
       - calibre
     environment:
@@ -179,7 +172,7 @@ services:
       - calibre_library:/config      # Shared with Calibre for metadata.db
       - calibre_library:/books        # Shared library location
     networks:
-      - gleh_network
+      - edu_network
     restart: unless-stopped
     deploy:
       resources:
@@ -195,7 +188,7 @@ services:
   # =========================================================================
   nginx:
     image: nginx:alpine
-    container_name: gleh-nginx
+    container_name: edu-nginx
     depends_on:
       - web
     ports:
@@ -209,7 +202,7 @@ services:
       # Optional: SSL certificates (uncomment for HTTPS)
       # - ./nginx/ssl:/etc/nginx/ssl:ro
     networks:
-      - gleh_network
+      - edu_network
     healthcheck:
       test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://localhost/health"]
       interval: 30s
@@ -232,22 +225,22 @@ services:
 volumes:
   postgres_data:
     driver: local
-    name: gleh-postgres-data
+    name: edu-postgres-data
     # PostgreSQL database storage
 
   app_logs:
     driver: local
-    name: gleh-app-logs
+    name: edu-app-logs
 
   calibre_library:
     driver: local
-    name: gleh-calibre-library
+    name: edu-calibre-library
     # This volume stores the Calibre library database and ebooks
     # Shared between Calibre (writes) and Calibre-Web (reads)
 
   courses_data:
     driver: local
-    name: gleh-courses
+    name: edu-courses
     # This volume stores MIT OCW and other course content
     # Upload via SFTP or Docker Desktop volume access
     # Served directly by nginx for fast static file delivery
@@ -256,36 +249,7 @@ volumes:
 # NETWORKS - Inter-service Communication
 ################################################################################
 networks:
-  gleh_network:
+  edu_network:
     driver: bridge
     driver_opts:
       com.docker.network.driver.mtu: 1500
-
-################################################################################
-# NOTES FOR CONFIGURATION
-################################################################################
-#
-# LOCAL DEVELOPMENT:
-#   - Copy .env.example to .env in the docker directory
-#   - Run: docker-compose up
-#   - Access Flask app at http://localhost
-#
-# PRODUCTION DEPLOYMENT:
-#   - Set FLASK_ENV=production
-#   - Set SECRET_KEY to a strong random value
-#   - Configure SSL certificates for HTTPS (nginx)
-#   - Use environment variables (not .env file) for secrets
-#
-# CALIBRE + CALIBRE-WEB:
-#   - Calibre: Ebook library management (http://localhost:8080)
-#   - Calibre-Web: Web interface + OPDS API (http://localhost:8083)
-#   - Both share the calibre_library volume
-#   - Calibre manages metadata.db, Calibre-Web reads it
-#   - GLEH Flask app connects to Calibre-Web OPDS feed
-#
-# LEGACY SAMBA INTEGRATION (DEPRECATED - Private fork only):
-#   - Samba configuration has been removed for public 1.0 release
-#   - All file storage now handled by Docker volumes
-#   - For private fork: uncomment Samba environment variables
-#
-################################################################################

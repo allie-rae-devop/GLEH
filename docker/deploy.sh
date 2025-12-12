@@ -61,8 +61,8 @@ echo -e "${GREEN}✓ Containers stopped${NC}"
 # Step 3: Handle fresh deployment
 if [ "$FRESH_DEPLOY" = true ]; then
     echo -e "\n${BLUE}[3/6] Removing existing volumes...${NC}"
-    docker volume rm gleh-postgres-data 2>/dev/null || true
-    docker volume rm gleh-app-logs 2>/dev/null || true
+    docker volume rm edu-postgres-data 2>/dev/null || true
+    docker volume rm edu-app-logs 2>/dev/null || true
     echo -e "${GREEN}✓ Volumes removed${NC}"
 else
     echo -e "\n${BLUE}[3/6] Preserving existing volumes${NC}"
@@ -77,7 +77,7 @@ echo -e "${GREEN}✓ Services started${NC}"
 echo -e "\n${BLUE}[5/6] Waiting for services to be ready...${NC}"
 echo -n "Waiting for PostgreSQL"
 for i in {1..30}; do
-    if docker exec gleh-postgres pg_isready -U gleh_user -d gleh_db &>/dev/null; then
+    if docker exec edu-postgres pg_isready -U edu_user -d edu_db &>/dev/null; then
         echo -e " ${GREEN}✓${NC}"
         break
     fi
@@ -86,14 +86,14 @@ for i in {1..30}; do
     if [ $i -eq 30 ]; then
         echo -e " ${RED}✗ Timeout${NC}"
         echo -e "${RED}PostgreSQL failed to start${NC}"
-        docker logs gleh-postgres --tail 20
+        docker logs edu-postgres --tail 20
         exit 1
     fi
 done
 
 echo -n "Waiting for Flask app"
 for i in {1..60}; do
-    if docker exec gleh-web curl -f http://localhost:5000/health &>/dev/null; then
+    if docker exec edu-web curl -f http://localhost:5000/health &>/dev/null; then
         echo -e " ${GREEN}✓${NC}"
         break
     fi
@@ -102,18 +102,18 @@ for i in {1..60}; do
     if [ $i -eq 60 ]; then
         echo -e " ${RED}✗ Timeout${NC}"
         echo -e "${RED}Flask app failed to start${NC}"
-        docker logs gleh-web --tail 20
+        docker logs edu-web --tail 20
         exit 1
     fi
 done
 
 # Step 6: Initialize database if needed
 echo -e "\n${BLUE}[6/6] Checking database initialization...${NC}"
-if docker exec gleh-postgres psql -U gleh_user -d gleh_db -c "SELECT 1 FROM \"user\" LIMIT 1" &>/dev/null; then
+if docker exec edu-postgres psql -U edu_user -d edu_db -c "SELECT 1 FROM \"user\" LIMIT 1" &>/dev/null; then
     echo -e "${GREEN}✓ Database already initialized${NC}"
 else
     echo -e "${YELLOW}⚠ Database not initialized, initializing now...${NC}"
-    docker exec gleh-web python scripts/init_database.py
+    docker exec edu-web python scripts/init_database.py
     echo -e "${GREEN}✓ Database initialized${NC}"
 fi
 
@@ -137,10 +137,10 @@ echo -e "${BLUE}Useful Commands:${NC}"
 echo -e "  • View logs:   ${YELLOW}docker-compose logs -f${NC}"
 echo -e "  • Stop all:    ${YELLOW}docker-compose down${NC}"
 echo -e "  • Restart app: ${YELLOW}docker-compose restart web${NC}"
-echo -e "  • Shell access: ${YELLOW}docker exec -it gleh-web bash${NC}"
+echo -e "  • Shell access: ${YELLOW}docker exec -it edu-web bash${NC}"
 echo
 
 # Show container status
 echo -e "${BLUE}Container Status:${NC}"
-docker ps --filter "name=gleh-" --format "table {{.Names}}\t{{.Status}}\t{{.Ports}}"
+docker ps --filter "name=edu-" --format "table {{.Names}}\t{{.Status}}\t{{.Ports}}"
 echo

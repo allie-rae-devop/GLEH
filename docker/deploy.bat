@@ -56,8 +56,8 @@ echo.
 REM Step 3: Handle fresh deployment
 if "%FRESH_DEPLOY%"=="true" (
     echo [3/6] Removing existing volumes...
-    docker volume rm gleh-postgres-data >nul 2>&1
-    docker volume rm gleh-app-logs >nul 2>&1
+    docker volume rm edu-postgres-data >nul 2>&1
+    docker volume rm edu-app-logs >nul 2>&1
     echo [OK] Volumes removed
     echo.
 ) else (
@@ -80,12 +80,12 @@ echo [5/6] Waiting for services to be ready...
 echo Waiting for PostgreSQL...
 set /a count=0
 :wait_postgres
-docker exec gleh-postgres pg_isready -U gleh_user -d gleh_db >nul 2>&1
+docker exec edu-postgres pg_isready -U edu_user -d edu_db >nul 2>&1
 if errorlevel 1 (
     set /a count+=1
     if !count! gtr 30 (
         echo [ERROR] PostgreSQL failed to start after 30 seconds
-        docker logs gleh-postgres --tail 20
+        docker logs edu-postgres --tail 20
         exit /b 1
     )
     timeout /t 1 /nobreak >nul
@@ -97,12 +97,12 @@ echo.
 echo Waiting for Flask app...
 set /a count=0
 :wait_flask
-docker exec gleh-web curl -f http://localhost:5000/health >nul 2>&1
+docker exec edu-web curl -f http://localhost:5000/health >nul 2>&1
 if errorlevel 1 (
     set /a count+=1
     if !count! gtr 60 (
         echo [ERROR] Flask app failed to start after 60 seconds
-        docker logs gleh-web --tail 20
+        docker logs edu-web --tail 20
         exit /b 1
     )
     timeout /t 1 /nobreak >nul
@@ -113,10 +113,10 @@ echo.
 
 REM Step 6: Initialize database if needed
 echo [6/6] Checking database initialization...
-docker exec gleh-postgres psql -U gleh_user -d gleh_db -c "SELECT 1 FROM \"user\" LIMIT 1" >nul 2>&1
+docker exec edu-postgres psql -U edu_user -d edu_db -c "SELECT 1 FROM \"user\" LIMIT 1" >nul 2>&1
 if errorlevel 1 (
     echo [WARNING] Database not initialized, initializing now...
-    docker exec gleh-web python scripts/init_database.py
+    docker exec edu-web python scripts/init_database.py
     if errorlevel 1 (
         echo [ERROR] Database initialization failed
         exit /b 1
@@ -146,10 +146,10 @@ echo Useful Commands:
 echo   * View logs:    docker-compose logs -f
 echo   * Stop all:     docker-compose down
 echo   * Restart app:  docker-compose restart web
-echo   * Shell access: docker exec -it gleh-web bash
+echo   * Shell access: docker exec -it edu-web bash
 echo.
 echo Container Status:
-docker ps --filter "name=gleh-" --format "table {{.Names}}\t{{.Status}}\t{{.Ports}}"
+docker ps --filter "name=edu-" --format "table {{.Names}}\t{{.Status}}\t{{.Ports}}"
 echo.
 
 endlocal

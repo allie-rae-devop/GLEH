@@ -1,7 +1,5 @@
 # GLEH Docker Deployment Guide
 
-## Quick Start (Production)
-
 ### 1. Clone the Repository
 
 ```bash
@@ -13,7 +11,7 @@ cd /opt/gleh
 
 ```bash
 # Copy template and edit with your settings
-cp .env.template .env
+cp docker/.env.template docker/.env
 nano .env
 ```
 
@@ -21,8 +19,6 @@ nano .env
 - `SECRET_KEY` - Generate a random secret key
 - `POSTGRES_PASSWORD` - Set a strong database password
 - `CALIBRE_PASSWORD` - Set Calibre admin password
-- `MINIO_SECRET_KEY` - Set MinIO secret key
-- `MINIO_ROOT_PASSWORD` - Set MinIO root password
 
 ### 3. Start the Stack
 
@@ -41,66 +37,11 @@ docker-compose ps
 docker-compose exec web python scripts/init_database.py
 ```
 
-### 5. Initialize MinIO Storage
+### 5. Access the Application
 
-```bash
-# Create storage buckets and folder structure
-python scripts/init_minio.py
-```
-
-### 6. Access the Application
-
-- **GLEH**: http://localhost (or your server IP)
+- **GLEH**: http://localhost:3080 (or your server IP)
 - **Admin Login**: admin / admin123 (CHANGE THIS!)
-- **MinIO Console**: http://localhost:9001
 - **Calibre-Web**: http://localhost:8083
-
----
-
-## Local Development
-
-### 1. Setup Environment
-
-```bash
-# Create virtual environment
-python -m venv .venv
-source .venv/bin/activate  # On Windows: .venv\Scripts\activate
-
-# Install dependencies
-pip install -r requirements.txt
-
-# Configure for local development
-cp .env.template .env
-```
-
-Edit `.env` for local development:
-```env
-DATABASE_URL=sqlite:///
-CALIBRE_WEB_URL=http://localhost:8083
-MINIO_ENDPOINT=localhost:9000
-```
-
-### 2. Start External Services
-
-```bash
-# Start MinIO and Calibre-Web via Docker
-cd docker
-docker-compose up -d minio calibre calibre-web
-```
-
-### 3. Initialize Database
-
-```bash
-python scripts/init_database.py
-```
-
-### 4. Run Development Server
-
-```bash
-python -m flask run
-```
-
-Access at http://localhost:5000
 
 ---
 
@@ -109,9 +50,7 @@ Access at http://localhost:5000
 | Service | Development | Docker Stack | Production |
 |---------|-------------|--------------|------------|
 | GLEH Web App | localhost:5000 | localhost | your-domain.com |
-| PostgreSQL | - | localhost:5432 | (internal) |
-| MinIO API | localhost:9000 | localhost:9000 | (internal) |
-| MinIO Console | localhost:9001 | localhost:9001 | your-domain.com/minio |
+| PostgreSQL  | - | localhost:5432 | (internal) |
 | Calibre GUI | localhost:8080 | localhost:8080 | (internal) |
 | Calibre-Web | localhost:8083 | localhost:8083 | (internal) |
 
@@ -153,15 +92,6 @@ docker-compose exec web ls -la /app/static
 docker-compose build web
 docker-compose up -d web
 ```
-
-### MinIO bucket not found
-```bash
-# Reinitialize MinIO
-python scripts/init_minio.py
-
-# Or create manually in console: http://localhost:9001
-```
-
 ---
 
 ## Production Checklist
@@ -172,9 +102,8 @@ Before deploying to production:
 - [ ] Set `FLASK_ENV=production`
 - [ ] Set `DEBUG=False`
 - [ ] Generate strong `SECRET_KEY`
-- [ ] Enable HTTPS (`MINIO_SECURE=true`)
 - [ ] Configure Nginx SSL certificates
-- [ ] Set up automated backups (PostgreSQL, MinIO)
+- [ ] Set up automated backups (PostgreSQL)
 - [ ] Configure firewall rules
 - [ ] Set up monitoring/logging
 - [ ] Document disaster recovery procedures
@@ -187,30 +116,30 @@ Before deploying to production:
 
 ```bash
 # Backup PostgreSQL
-docker-compose exec db pg_dump -U gleh_user gleh_db > backup-$(date +%Y%m%d).sql
-
-# Backup MinIO data
-docker run --rm -v gleh-minio-data:/source -v ./backups:/backup \
-  busybox tar czf /backup/minio-$(date +%Y%m%d).tar.gz -C /source .
+docker-compose exec db pg_dump -U edu_user edu_db > backup-$(date +%Y%m%d).sql
 
 # Backup Calibre library
-docker run --rm -v gleh-calibre-library:/source -v ./backups:/backup \
+docker run --rm -v edu-calibre-library:/source -v ./backups:/backup \
   busybox tar czf /backup/calibre-$(date +%Y%m%d).tar.gz -C /source .
+
+# Backup Courses
+docker run --rm -v edu-courses:/source -v ./backups:/backup \
+  busybox tar czf /backup/courses-$(date +%Y%m%d).tar.gz -C /source .
 ```
 
 ### Restore
 
 ```bash
 # Restore PostgreSQL
-docker-compose exec -T db psql -U gleh_user gleh_db < backup.sql
-
-# Restore MinIO
-docker run --rm -v gleh-minio-data:/dest -v ./backups:/backup \
-  busybox tar xzf /backup/minio-backup.tar.gz -C /dest
+docker-compose exec -T db psql -U edu_user edu_db < backup.sql
 
 # Restore Calibre
-docker run --rm -v gleh-calibre-library:/dest -v ./backups:/backup \
+docker run --rm -v edu-calibre-library:/dest -v ./backups:/backup \
   busybox tar xzf /backup/calibre-backup.tar.gz -C /dest
+
+# Restore Courses
+docker run --rm -v edu-courses:/dest -v ./backups:/backup \
+  busybox tar xzf /backup/courses-backup.tar.gz -C /dest
 ```
 
 ---
