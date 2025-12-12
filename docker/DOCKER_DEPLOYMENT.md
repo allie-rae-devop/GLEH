@@ -27,6 +27,7 @@ nano .env
 ```bash
 cd docker/nginx
 bash generate_ssl.sh
+cd ..  # Back to docker/ directory
 ```
 
 This creates:
@@ -38,26 +39,33 @@ This creates:
 ### 4. Start the Stack
 
 ```bash
-cd docker
-docker-compose up -d
+# Make sure you're in the docker/ directory
+docker compose up -d
 ```
+
+**Note:** Use `docker compose` (with a space), not `docker-compose` (hyphen). The hyphenated version is deprecated.
 
 ### 5. Initialize Database
 
 ```bash
 # Wait for services to be healthy
-docker-compose ps
+docker compose ps
 
 # Initialize database and create admin user
-docker-compose exec web python scripts/init_database.py
+docker exec edu-web python scripts/init_database.py
 ```
 
 ### 6. Access the Application
 
-- **GLEH Web App**: http://localhost:3080 (or your server IP)
+- **GLEH Web App**: http://YOUR_IP:3080
 - **Admin Login**: admin / admin123 (⚠️ CHANGE THIS!)
-- **Calibre Desktop**: https://localhost:3443 (Username: `abc`, Password: from `CALIBRE_PASSWORD` in .env)
-- **Calibre-Web**: http://localhost:8083
+- **Calibre Desktop**: https://YOUR_IP:3443 (Username: `abc`, Password: from `CALIBRE_PASSWORD` in .env)
+- **Calibre-Web**: http://YOUR_IP:8083
+
+**⚠️ CRITICAL - Calibre Desktop:**
+- ✅ **CORRECT:** `https://YOUR_IP:3443` (Nginx SSL proxy)
+- ❌ **WRONG:** Port 8080 (will show "HTTPS required" error)
+- Port 8080 is for internal Docker networking only - you cannot access it directly from your browser
 
 ---
 
@@ -164,30 +172,30 @@ https://localhost:3443
 
 ```bash
 # Check service status
-docker-compose ps
+docker compose ps
 
 # View logs
-docker-compose logs -f
+docker compose logs -f
 
 # Rebuild if needed
-docker-compose build --no-cache
-docker-compose up -d
+docker compose build --no-cache
+docker compose up -d
 ```
 
 ### 5. Database Connection Errors
 
 ```bash
 # Verify PostgreSQL is healthy
-docker-compose ps db
+docker compose ps db
 
 # Check database logs
-docker-compose logs db
+docker compose logs db
 
 # Verify database user (use YOUR DB_USER from .env):
 docker exec edu-postgres psql -U edu_user -d edu_db -c "SELECT version();"
 
 # Reinitialize database
-docker-compose exec web python scripts/init_database.py
+docker exec edu-web python scripts/init_database.py
 ```
 
 ### 6. Static Files Not Loading
@@ -197,8 +205,8 @@ docker-compose exec web python scripts/init_database.py
 docker exec edu-web ls -la /app/static
 
 # Rebuild with static files
-docker-compose build web
-docker-compose up -d web
+docker compose build web
+docker compose up -d web
 ```
 
 ### 7. Services Running But Flask Not Responding
@@ -246,9 +254,9 @@ sudo lsof -ti:3080 | xargs kill -9
 docker exec edu-web chown -R edu:edu /app/data/courses /app/logs
 
 # Or recreate volumes with correct permissions
-docker-compose down
+docker compose down
 docker volume rm edu-courses edu-app-logs
-docker-compose up -d
+docker compose up -d
 ```
 
 ---
@@ -275,7 +283,7 @@ Before deploying to production:
 
 ```bash
 # Backup PostgreSQL
-docker-compose exec db pg_dump -U edu_user edu_db > backup-$(date +%Y%m%d).sql
+docker exec edu-postgres pg_dump -U edu_user edu_db > backup-$(date +%Y%m%d).sql
 
 # Backup Calibre library
 docker run --rm -v edu-calibre-library:/source -v ./backups:/backup \
@@ -290,7 +298,7 @@ docker run --rm -v edu-courses:/source -v ./backups:/backup \
 
 ```bash
 # Restore PostgreSQL
-docker-compose exec -T db psql -U edu_user edu_db < backup.sql
+docker exec -i edu-postgres psql -U edu_user edu_db < backup.sql
 
 # Restore Calibre
 docker run --rm -v edu-calibre-library:/dest -v ./backups:/backup \
@@ -311,11 +319,11 @@ git pull
 
 # Rebuild containers
 cd docker
-docker-compose build
+docker compose build
 
 # Restart services
-docker-compose up -d
+docker compose up -d
 
 # Run any new migrations
-docker-compose exec web python scripts/init_database.py
+docker exec edu-web python scripts/init_database.py
 ```

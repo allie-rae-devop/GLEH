@@ -36,20 +36,31 @@ GLEH is a self-hosted learning management system that provides:
 git clone https://github.com/your-org/GLEH.git
 cd GLEH
 
-# 2. Generate SSL certificates (for Calibre Desktop)
-cd docker/nginx && bash generate_ssl.sh && cd ..
+# 2. Configure environment
+cd docker
+cp .env.template .env
+nano .env  # Set your passwords
 
-# 3. Start all services
-docker-compose up -d
+# 3. Generate SSL certificates (for Calibre Desktop)
+cd nginx
+bash generate_ssl.sh
+cd ..  # Back to docker/ directory
 
-# 4. Initialize database
+# 4. Start all services
+docker compose up -d
+
+# 5. Initialize database
 docker exec edu-web python scripts/init_database.py
 
-# 5. Access the application
-# Main App: http://localhost:3080
-# Calibre Desktop: https://localhost:3443 (user: abc, password: changeme)
-# Login: admin / admin123 (⚠️ CHANGE ALL DEFAULT PASSWORDS!)
+# 6. Access the application
+# Main App: http://YOUR_IP:3080
+# Calibre Desktop: https://YOUR_IP:3443 (username: abc, password: from .env)
+# Admin Login: admin / admin123 (⚠️ CHANGE ALL DEFAULT PASSWORDS!)
 ```
+
+**Important:** Replace `YOUR_IP` with your server's IP address.
+
+**⚠️ Calibre Desktop:** You MUST use `https://YOUR_IP:3443` - Do NOT use port 8080.
 
 That's it! For detailed deployment instructions, see [docker/DOCKER_DEPLOYMENT.md](docker/DOCKER_DEPLOYMENT.md).
 
@@ -217,12 +228,16 @@ Copy `.env.template` to `.env` and customize for your deployment.
 
 ### Access URLs
 
-- **Main App**: http://localhost:3080
-- **Calibre Desktop**: https://localhost:3443 (Username: `abc`, Password: `changeme`)
-- **Calibre-Web**: http://localhost:8083
-- **Admin Panel**: http://localhost:3080/admin
+- **Main App**: http://YOUR_IP:3080
+- **Calibre Desktop**: https://YOUR_IP:3443 (Username: `abc`, Password: from `.env`)
+- **Calibre-Web**: http://YOUR_IP:8083
+- **Admin Panel**: http://YOUR_IP:3080/admin
 
-**Note:** Calibre Desktop uses HTTPS on port 3443. Your browser will show a security warning for the self-signed certificate - click "Advanced" and "Accept the Risk" to proceed.
+**⚠️ CRITICAL - Calibre Desktop Access:**
+- ✅ **CORRECT URL:** `https://YOUR_IP:3443` (Nginx SSL proxy)
+- ❌ **WRONG - DO NOT USE:** Port 8080 (will show "HTTPS required" error)
+- Port 8080 is for internal container communication only
+- Your browser will show a security warning for the self-signed certificate - click "Advanced" and "Accept the Risk"
 
 ### Default Credentials
 

@@ -8,7 +8,7 @@
 # ============================================================================
 # STAGE 1: BUILDER
 # ============================================================================
-FROM python:3.11-slim as builder
+FROM python:3.11-slim AS builder
 
 LABEL maintainer="GLEH Development Team"
 LABEL description="Gammons Landing Educational Hub - Flask-based LMS"

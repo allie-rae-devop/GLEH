@@ -17,12 +17,12 @@ This creates self-signed SSL certificates valid for 365 days.
 
 ```bash
 cd docker
-docker-compose up -d
+docker compose up -d
 ```
 
 ### 3. Access Calibre Desktop
 
-**URL:** https://localhost:3443
+**URL:** https://YOUR_IP:3443
 
 **Credentials:**
 - Username: `abc` (fixed, cannot be changed)
