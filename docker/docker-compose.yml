@@ -191,6 +191,7 @@ services:
     container_name: edu-nginx
     depends_on:
       - web
+      - calibre
     ports:
       - "0.0.0.0:${NGINX_PORT:-3080}:80"
       - "0.0.0.0:${NGINX_HTTPS_PORT:-3443}:443"
@@ -199,8 +200,8 @@ services:
       - ./nginx/conf.d:/etc/nginx/conf.d:ro
       - ../static:/app/static:ro
       - courses_data:/app/data/courses:ro
-      # Optional: SSL certificates (uncomment for HTTPS)
-      # - ./nginx/ssl:/etc/nginx/ssl:ro
+      # SSL certificates for Calibre Desktop HTTPS proxy
+      - ./nginx/ssl:/etc/nginx/ssl:ro
     networks:
       - edu_network
     healthcheck:

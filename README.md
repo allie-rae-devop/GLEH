@@ -34,17 +34,21 @@ GLEH is a self-hosted learning management system that provides:
 ```bash
 # 1. Clone the repository
 git clone https://github.com/your-org/GLEH.git
-cd GLEH/docker
+cd GLEH
 
-# 2. Start all services
+# 2. Generate SSL certificates (for Calibre Desktop)
+cd docker/nginx && bash generate_ssl.sh && cd ..
+
+# 3. Start all services
 docker-compose up -d
 
-# 3. Initialize database
+# 4. Initialize database
 docker exec edu-web python scripts/init_database.py
 
-# 4. Access the application
+# 5. Access the application
 # Main App: http://localhost:3080
-# Login: admin / admin123 (⚠️ CHANGE THIS!)
+# Calibre Desktop: https://localhost:3443 (user: abc, password: changeme)
+# Login: admin / admin123 (⚠️ CHANGE ALL DEFAULT PASSWORDS!)
 ```
 
 That's it! For detailed deployment instructions, see [docker/DOCKER_DEPLOYMENT.md](docker/DOCKER_DEPLOYMENT.md).
@@ -214,9 +218,11 @@ Copy `.env.template` to `.env` and customize for your deployment.
 ### Access URLs
 
 - **Main App**: http://localhost:3080
-- **Calibre Desktop**: http://localhost:8080 (password: changeme)
+- **Calibre Desktop**: https://localhost:3443 (Username: `abc`, Password: `changeme`)
 - **Calibre-Web**: http://localhost:8083
 - **Admin Panel**: http://localhost:3080/admin
+
+**Note:** Calibre Desktop uses HTTPS on port 3443. Your browser will show a security warning for the self-signed certificate - click "Advanced" and "Accept the Risk" to proceed.
 
 ### Default Credentials
 

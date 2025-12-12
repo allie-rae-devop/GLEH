@@ -20,14 +20,29 @@ nano .env
 - `POSTGRES_PASSWORD` - Set a strong database password
 - `CALIBRE_PASSWORD` - Set Calibre admin password
 
-### 3. Start the Stack
+### 3. Generate SSL Certificates
+
+**Required for Calibre Desktop HTTPS access:**
+
+```bash
+cd docker/nginx
+bash generate_ssl.sh
+```
+
+This creates:
+- `ssl/calibre.crt` - SSL certificate
+- `ssl/calibre.key` - Private key
+
+**Note:** These are self-signed certificates. Your browser will show a security warning. Click "Advanced" and "Accept the Risk" to proceed.
+
+### 4. Start the Stack
 
 ```bash
 cd docker
 docker-compose up -d
 ```
 
-### 4. Initialize Database
+### 5. Initialize Database
 
 ```bash
 # Wait for services to be healthy
@@ -37,10 +52,11 @@ docker-compose ps
 docker-compose exec web python scripts/init_database.py
 ```
 
-### 5. Access the Application
+### 6. Access the Application
 
-- **GLEH**: http://localhost:3080 (or your server IP)
-- **Admin Login**: admin / admin123 (CHANGE THIS!)
+- **GLEH Web App**: http://localhost:3080 (or your server IP)
+- **Admin Login**: admin / admin123 (⚠️ CHANGE THIS!)
+- **Calibre Desktop**: https://localhost:3443 (Username: `abc`, Password: from `CALIBRE_PASSWORD` in .env)
 - **Calibre-Web**: http://localhost:8083
 
 ---
@@ -58,7 +74,94 @@ docker-compose exec web python scripts/init_database.py
 
 ## Troubleshooting
 
-### Stack won't start
+### 1. Database User Configuration
+
+**Issue:** Flask app can't connect to PostgreSQL, or manual `psql` commands fail with "role does not exist"
+
+**Root Cause:** The database user in `.env` doesn't match what you're using in commands.
+
+**Solution:**
+
+1. Check what user PostgreSQL actually created:
+```bash
+docker exec edu-postgres psql -U postgres -c "\du"
+```
+
+2. Verify your `.env` matches:
+```bash
+cat docker/.env | grep DB_USER
+```
+
+3. **IMPORTANT:** All manual database commands must use the SAME user as `.env`:
+```bash
+# If DB_USER=edu_user in .env:
+docker exec edu-postgres psql -U edu_user -d edu_db -c "SELECT * FROM \"user\";"
+
+# If DB_USER=admin in .env:
+docker exec edu-postgres psql -U admin -d edu_db -c "SELECT * FROM \"user\";"
+```
+
+4. Flask app automatically uses the correct user from `.env` - verify it works:
+```bash
+docker exec edu-web python -c "from src.models import db, User; from src.app import app; app.app_context().push(); print(f'Users: {User.query.count()}')"
+```
+
+**Recommended:** Use `DB_USER=edu_user` in `.env` to match documentation.
+
+### 2. Calibre Desktop Authentication
+
+**Issue:** Browser keeps asking for username/password for Calibre Desktop, credentials won't work
+
+**Root Cause:** LinuxServer Calibre container uses HTTP Basic Authentication with a fixed username.
+
+**Solution:**
+
+**Username:** `abc` (LinuxServer default - NOT configurable)
+**Password:** Value of `CALIBRE_PASSWORD` from your `.env` file
+
+```bash
+# Check your Calibre password:
+grep CALIBRE_PASSWORD docker/.env
+
+# Or check inside the container:
+docker exec edu-calibre printenv PASSWORD
+```
+
+**Access URLs:**
+- **HTTP (port 8080):** http://localhost:8080 - Works but redirects to HTTPS
+- **HTTPS (port 3443):** https://localhost:3443 - Use this for Calibre Desktop VNC interface
+
+### 3. Calibre Desktop SSL/HTTPS Access
+
+**Issue:** Browser shows `SSL_ERROR_RX_RECORD_TOO_LONG` or "Secure Connection Failed" when accessing Calibre
+
+**Root Cause:** Calibre's VNC interface (Selkies) requires HTTPS, but you're accessing HTTP or SSL certificates aren't configured.
+
+**Solution:**
+
+1. **Generate SSL certificates** (if not done):
+```bash
+cd docker/nginx
+bash generate_ssl.sh
+```
+
+2. **Access via HTTPS on port 3443:**
+```
+https://localhost:3443
+```
+
+3. **Accept the self-signed certificate warning:**
+   - Click "Advanced"
+   - Click "Accept the Risk and Continue"
+
+4. **Login with:**
+   - Username: `abc`
+   - Password: (from `CALIBRE_PASSWORD` in `.env`)
+
+**Why HTTPS is required:** Calibre Desktop uses Selkies for WebRTC-based VNC access, which requires secure connections.
+
+### 4. Stack Won't Start
+
 ```bash
 # Check service status
 docker-compose ps
@@ -71,7 +174,8 @@ docker-compose build --no-cache
 docker-compose up -d
 ```
 
-### Database connection errors
+### 5. Database Connection Errors
+
 ```bash
 # Verify PostgreSQL is healthy
 docker-compose ps db
@@ -79,19 +183,74 @@ docker-compose ps db
 # Check database logs
 docker-compose logs db
 
+# Verify database user (use YOUR DB_USER from .env):
+docker exec edu-postgres psql -U edu_user -d edu_db -c "SELECT version();"
+
 # Reinitialize database
 docker-compose exec web python scripts/init_database.py
 ```
 
-### Static files not loading
+### 6. Static Files Not Loading
+
 ```bash
 # Verify static files were copied
-docker-compose exec web ls -la /app/static
+docker exec edu-web ls -la /app/static
 
 # Rebuild with static files
 docker-compose build web
 docker-compose up -d web
 ```
+
+### 7. Services Running But Flask Not Responding
+
+**Check Flask is actually running:**
+```bash
+# Check Flask logs
+docker logs edu-web --tail 50
+
+# Verify health endpoint
+curl http://localhost:3080/health
+
+# Check internal Flask port
+curl http://localhost:5000/health
+```
+
+**If Flask is down:**
+```bash
+# Restart Flask container
+docker restart edu-web
+
+# Check for Python errors
+docker logs edu-web --tail 100
+```
+
+### 8. Port Already In Use
+
+**Error:** "Bind for 0.0.0.0:3080 failed: port is already allocated"
+
+**Solution:**
+```bash
+# Option 1: Change port in .env
+nano docker/.env
+# Change NGINX_PORT=3080 to another port
+
+# Option 2: Kill process using the port
+sudo lsof -ti:3080 | xargs kill -9
+```
+
+### 9. Permission Denied Errors
+
+**For course uploads or log files:**
+```bash
+# Fix volume permissions
+docker exec edu-web chown -R edu:edu /app/data/courses /app/logs
+
+# Or recreate volumes with correct permissions
+docker-compose down
+docker volume rm edu-courses edu-app-logs
+docker-compose up -d
+```
+
 ---
 
 ## Production Checklist

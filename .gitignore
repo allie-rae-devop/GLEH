@@ -195,6 +195,9 @@ docker/.env
 docker/.env.local
 docker/.env.*.local
 
+# SSL certificates (generated during deployment)
+docker/nginx/ssl/
+
 # ============================================================================
 # OS-SPECIFIC
 # ============================================================================
