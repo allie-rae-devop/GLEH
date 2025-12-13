@@ -208,9 +208,15 @@ class CalibreWebClient:
             book_id: Calibre book ID
 
         Returns:
-            URL to book cover image (uses external URL for browser access)
+            URL to book cover image (proxied through Flask for authentication)
         """
-        return f"{self.external_url}/cover/{book_id}"
+        # Use Flask proxy endpoint to avoid cross-origin authentication issues
+        try:
+            from flask import url_for
+            return url_for('proxy_calibre_cover', book_id=book_id, _external=False)
+        except RuntimeError:
+            # Not in Flask app context, return relative URL
+            return f"/api/calibre/cover/{book_id}"
 
     def get_reader_url(self, book_id: int) -> str:
         """

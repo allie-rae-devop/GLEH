@@ -447,6 +447,45 @@ def textbook_page(book_id):
 
     return render_template('textbook.html', book=book, user_note=user_note)
 
+@app.route('/api/calibre/cover/<int:book_id>')
+def proxy_calibre_cover(book_id):
+    """
+    Proxy cover images from Calibre-Web with authentication.
+
+    This endpoint fetches cover images from Calibre-Web using authenticated
+    requests and serves them to the browser, avoiding cross-origin auth issues.
+
+    Args:
+        book_id: Calibre book ID
+
+    Returns:
+        Image bytes with appropriate content-type header
+    """
+    try:
+        calibre_client = get_calibre_client()
+
+        # Construct internal Calibre-Web cover URL
+        cover_url = f"{calibre_client.base_url}/opds/cover/{book_id}"
+
+        # Fetch cover using authenticated session
+        response = calibre_client.session.get(cover_url, timeout=10)
+        response.raise_for_status()
+
+        # Determine content type from response headers
+        content_type = response.headers.get('Content-Type', 'image/jpeg')
+
+        # Return image bytes
+        return send_file(
+            io.BytesIO(response.content),
+            mimetype=content_type,
+            as_attachment=False
+        )
+
+    except Exception as e:
+        log.error(f"Failed to proxy cover for book {book_id}: {e}")
+        # Return 404 or default placeholder image
+        abort(404)
+
 @app.route('/courses/<path:filepath>')
 def serve_course_files(filepath):
     """Serves course files from the courses directory."""
