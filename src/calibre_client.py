@@ -308,18 +308,8 @@ class CalibreWebClient:
             # Extract publication date
             published = entry.findtext('atom:published', '', ATOM_NS) or entry.findtext('atom:updated', '', ATOM_NS)
 
-            # Extract cover URL from links (use external_url for browser access)
+            # Extract cover URL - use Flask proxy endpoint
             cover_url = self.get_cover_url(book_id)
-            for link in entry.findall('atom:link', ATOM_NS):
-                rel = link.get('rel', '')
-                if rel == 'http://opds-spec.org/image' or rel == 'http://opds-spec.org/image/thumbnail':
-                    href = link.get('href', '')
-                    if href.startswith('http'):
-                        cover_url = href
-                    elif href.startswith('/'):
-                        # Use external_url for browser-accessible URLs
-                        cover_url = f"{self.external_url}{href}"
-                    break
 
             return {
                 'id': book_id,
