@@ -67,6 +67,65 @@ docker exec edu-web python scripts/init_database.py
 - ❌ **WRONG:** Port 8080 (will show "HTTPS required" error)
 - Port 8080 is for internal Docker networking only - you cannot access it directly from your browser
 
+### 7. Configure Calibre-Web Settings
+
+**IMPORTANT:** After first deployment, you must configure Calibre-Web to enable SSO and guest access.
+
+1. **Access Calibre-Web directly:** http://YOUR_IP:8083
+
+2. **Login with default credentials:**
+   - Username: `admin`
+   - Password: `admin123`
+   - ⚠️ **Change this password immediately after login!**
+
+3. **Navigate to Admin Panel:**
+   - Click your username (top right) → "Admin"
+   - Or go to: http://YOUR_IP:8083/admin
+
+4. **Enable Reverse Proxy Authentication:**
+   - Go to: "Admin" → "Basic Configuration" → "Feature Configuration"
+   - Find "Reverse Proxy Authentication"
+   - Set **Reverse Proxy Header Name:** `X-Remote-User`
+   - Click "Save"
+
+5. **Enable Guest Access:**
+   - Go to: "Admin" → "Basic Configuration" → "Feature Configuration"
+   - Enable "Public Registration"
+   - Enable "Anonymous Browsing"
+   - Click "Save"
+
+6. **Configure Guest User Permissions:**
+   - Go to: "Admin" → "Edit Users" → Select "Guest" user
+   - Enable the following permissions:
+     - ✅ "Allow Browse"
+     - ✅ "Allow Read Books"
+     - ✅ "Allow Download"
+     - ✅ "Show Detail Random"
+   - Click "Save"
+
+7. **Enable E-Reader Features:**
+   - Go to: "Admin" → "Basic Configuration" → "Feature Configuration"
+   - Enable "E-Book Viewer"
+   - Enable "E-Book Conversion"
+   - Click "Save"
+
+8. **Point to Calibre Library:**
+   - Go to: "Admin" → "Basic Configuration" → "Database Configuration"
+   - Set "Database Path:" `/books/metadata.db`
+   - Click "Save" and restart Calibre-Web when prompted
+
+9. **Verify Integration:**
+   - Go to GLEH homepage: http://YOUR_IP:3080
+   - You should see featured textbooks with cover images
+   - Click "Launch Book" - should open in reader (no login required for guests)
+   - If logged into GLEH, you'll be auto-logged into Calibre-Web via SSO
+
+**Troubleshooting:**
+
+- If books don't appear on GLEH homepage, verify Calibre-Web credentials are set in `.env` file
+- If guest access doesn't work, verify Guest user has "Allow Read Books" permission
+- If SSO doesn't work, verify reverse proxy header is set to `X-Remote-User`
+
 ---
 
 ## Service URLs
