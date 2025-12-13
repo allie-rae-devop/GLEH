@@ -218,6 +218,11 @@ SECRET_KEY=change_me_in_production
 # Calibre-Web Integration
 CALIBRE_WEB_URL=http://calibre-web:8083
 CALIBRE_WEB_EXTERNAL_URL=http://localhost:8083
+
+# Calibre-Web Authentication (optional)
+# If Calibre-Web requires authentication, set these credentials
+CALIBRE_WEB_USERNAME=admin
+CALIBRE_WEB_PASSWORD=admin123
 ```
 
 Copy `.env.template` to `.env` and customize for your deployment.
@@ -248,17 +253,84 @@ Copy `.env.template` to `.env` and customize for your deployment.
 
 ### Managing Content
 
+Content is stored in Docker-managed volumes. For remote deployments, use one of these methods to upload courses and ebooks:
+
+#### Method 1: Docker CP (Recommended for Batch Uploads)
+
+Best for uploading multiple large files or folders to remote servers.
+
 **Upload Courses:**
-1. Go to Admin Panel → Courses tab
-2. Drag and drop course .zip files
-3. Click "Scan Course Directory" to detect new content
 
-**Add E-books:**
-1. Access Calibre Desktop at port 8080
-2. Add books using the Calibre interface
-3. Books automatically appear in GLEH via OPDS feed
+```bash
+# 1. Copy files from local machine to server temp location
+scp -r /path/to/course_folder user@YOUR_IP:/tmp/course_upload
 
-**Manage Users:**
+# 2. SSH to server
+ssh user@YOUR_IP
+
+# 3. Copy from temp to Docker volume
+docker cp /tmp/course_upload/. edu-web:/app/data/courses/
+
+# 4. Scan for new courses (optional - admin panel also has this button)
+docker exec edu-web python scripts/scan_courses.py
+
+# 5. Clean up temp files
+rm -rf /tmp/course_upload
+```
+
+**Upload E-books to Calibre:**
+
+```bash
+# 1. Copy ebook files to server temp location
+scp -r /path/to/ebooks/ user@YOUR_IP:/tmp/ebook_upload
+
+# 2. SSH to server
+ssh user@YOUR_IP
+
+# 3. Copy to Calibre library volume
+docker cp /tmp/ebook_upload/. edu-calibre:/config/Calibre\ Library/
+
+# 4. Clean up
+rm -rf /tmp/ebook_upload
+```
+
+#### Method 2: SFTP Mounting (Recommended for Individual Files)
+
+Best for one-off uploads or when using GUI tools like FileZilla.
+
+**Using FileZilla (Windows/Mac/Linux):**
+
+1. **Connect to Server:**
+   - File → Site Manager → New Site
+   - Protocol: SFTP
+   - Host: YOUR_IP
+   - Port: 22
+   - User: your_username
+   - Key file: your_private_key.ppk (if using key auth)
+
+2. **Upload Courses:**
+   - Navigate to `/tmp/uploads/` on remote server
+   - Upload course folders
+   - SSH to server and run:
+
+   ```bash
+   docker cp /tmp/uploads/course_name edu-web:/app/data/courses/
+   docker exec edu-web python scripts/scan_courses.py
+   rm -rf /tmp/uploads/course_name
+   ```
+
+3. **Upload E-books:**
+   - Upload ebook files to `/tmp/uploads/`
+   - SSH to server and run:
+
+   ```bash
+   docker cp /tmp/uploads/book.epub edu-calibre:/config/Calibre\ Library/
+   rm -rf /tmp/uploads/book.epub
+   ```
+
+#### Managing Users
+
+**Via Admin Panel:**
 1. Go to Admin Panel → Users tab
 2. Create, edit, or delete user accounts
 3. Reset passwords or seed test users
@@ -286,7 +358,7 @@ Before deploying to production:
 
 ```bash
 # Backup PostgreSQL
-docker-compose exec db pg_dump -U edu_user edu_db > backup.sql
+docker compose exec db pg_dump -U edu_user edu_db > backup.sql
 
 # Backup Calibre library
 docker run --rm -v edu-calibre-library:/source -v ./backups:/backup \
@@ -309,8 +381,8 @@ git pull
 
 # Rebuild and restart
 cd docker
-docker-compose build
-docker-compose up -d
+docker compose build
+docker compose up -d
 
 # Check status
 docker ps --filter "name=edu-"
@@ -331,7 +403,7 @@ status.bat     # Windows
 ### View Logs
 
 ```bash
-docker-compose logs -f        # All services
+docker compose logs -f        # All services
 docker logs edu-web -f        # Flask app
 docker logs edu-nginx -f      # Nginx
 docker logs edu-postgres -f   # Database
@@ -346,8 +418,8 @@ docker exec edu-web python scripts/init_database.py
 
 **Containers won't start:**
 ```bash
-docker-compose down
-docker-compose up -d
+docker compose down
+docker compose up -d
 ```
 
 **Port conflicts:**
@@ -408,7 +480,7 @@ git clone https://github.com/your-username/GLEH.git
 git checkout -b feature/your-feature
 
 # Make changes and test
-docker-compose up -d
+docker compose up -d
 pytest tests/ -v
 
 # Commit and push

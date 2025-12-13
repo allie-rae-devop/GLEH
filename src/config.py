@@ -82,6 +82,8 @@ class DevelopmentConfig(Config):
     CALIBRE_WEB_URL = os.environ.get('CALIBRE_WEB_URL', 'http://localhost:8083')
     CALIBRE_WEB_EXTERNAL_URL = os.environ.get('CALIBRE_WEB_EXTERNAL_URL', os.environ.get('CALIBRE_WEB_URL', 'http://localhost:8083'))
     CALIBRE_LIBRARY_PATH = os.environ.get('CALIBRE_LIBRARY_PATH')
+    CALIBRE_WEB_USERNAME = os.environ.get('CALIBRE_WEB_USERNAME')
+    CALIBRE_WEB_PASSWORD = os.environ.get('CALIBRE_WEB_PASSWORD')
 
 
 class ProductionConfig(Config):
@@ -114,6 +116,8 @@ class ProductionConfig(Config):
         )
     CALIBRE_WEB_EXTERNAL_URL = os.environ.get('CALIBRE_WEB_EXTERNAL_URL', CALIBRE_WEB_URL)
     CALIBRE_LIBRARY_PATH = os.environ.get('CALIBRE_LIBRARY_PATH')
+    CALIBRE_WEB_USERNAME = os.environ.get('CALIBRE_WEB_USERNAME')
+    CALIBRE_WEB_PASSWORD = os.environ.get('CALIBRE_WEB_PASSWORD')
 
     # Session Security - Production Hardening (OWASP A02:2021, A07:2021)
     # Enforce HTTPS-only transmission (prevents MitM session hijacking)

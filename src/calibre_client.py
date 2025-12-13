@@ -26,7 +26,8 @@ ATOM_NS = {'atom': 'http://www.w3.org/2005/Atom',
 class CalibreWebClient:
     """Client for interacting with Calibre-Web via OPDS feeds."""
 
-    def __init__(self, base_url: Optional[str] = None, external_url: Optional[str] = None):
+    def __init__(self, base_url: Optional[str] = None, external_url: Optional[str] = None,
+                 username: Optional[str] = None, password: Optional[str] = None):
         """
         Initialize Calibre-Web OPDS client.
 
@@ -35,6 +36,10 @@ class CalibreWebClient:
                      If not provided, reads from CALIBRE_WEB_URL env var or Flask config
             external_url: External base URL for browser access (e.g., http://localhost:8083)
                          If not provided, reads from CALIBRE_WEB_EXTERNAL_URL or uses base_url
+            username: Optional Calibre-Web username for authentication
+                     If not provided, reads from CALIBRE_WEB_USERNAME env var
+            password: Optional Calibre-Web password for authentication
+                     If not provided, reads from CALIBRE_WEB_PASSWORD env var
         """
         self.base_url = base_url or self._get_base_url()
         if not self.base_url:
@@ -50,10 +55,19 @@ class CalibreWebClient:
         self.external_url = external_url or self._get_external_url() or self.base_url
         self.external_url = self.external_url.rstrip('/')
 
+        # Get authentication credentials from parameters or environment
+        self.username = username or self._get_username()
+        self.password = password or self._get_password()
+
         self.session = requests.Session()
         self.session.headers.update({
             'User-Agent': 'GLEH/1.0 Calibre-Web OPDS Client'
         })
+
+        # Set up basic authentication if credentials are provided
+        if self.username and self.password:
+            self.session.auth = (self.username, self.password)
+            logger.info(f"Calibre-Web authentication configured for user: {self.username}")
 
     def _get_base_url(self) -> Optional[str]:
         """Get Calibre-Web base URL from environment or Flask config."""
@@ -72,6 +86,20 @@ class CalibreWebClient:
         except RuntimeError:
             # Not in Flask app context, try environment variable
             return os.environ.get('CALIBRE_WEB_EXTERNAL_URL')
+
+    def _get_username(self) -> Optional[str]:
+        """Get Calibre-Web username from environment or Flask config."""
+        try:
+            return current_app.config.get('CALIBRE_WEB_USERNAME')
+        except RuntimeError:
+            return os.environ.get('CALIBRE_WEB_USERNAME')
+
+    def _get_password(self) -> Optional[str]:
+        """Get Calibre-Web password from environment or Flask config."""
+        try:
+            return current_app.config.get('CALIBRE_WEB_PASSWORD')
+        except RuntimeError:
+            return os.environ.get('CALIBRE_WEB_PASSWORD')
 
     def get_books(self, limit: int = 100, offset: int = 0) -> List[Dict]:
         """

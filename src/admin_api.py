@@ -7,6 +7,7 @@ import os
 import sys
 import zipfile
 import subprocess
+import json
 from functools import wraps
 from werkzeug.utils import secure_filename
 from flask import Blueprint, request, jsonify, current_app
@@ -93,7 +94,7 @@ def update_env_config():
 @login_required
 @admin_required
 def scan_courses():
-    """Scan /courses directory for new courses"""
+    """Scan /courses directory and import courses to database"""
     try:
         # Determine courses directory (Docker volume or local)
         courses_dir = '/app/data/courses' if os.path.exists(
@@ -103,24 +104,115 @@ def scan_courses():
         if not os.path.isdir(courses_dir):
             return jsonify({'error': 'Courses directory not found'}), 400
 
-        course_folders = [f for f in os.listdir(courses_dir)
-                          if os.path.isdir(os.path.join(courses_dir, f))]
+        # Find all valid course directories (must have index.html or data.json)
+        course_folders = []
+        for item in os.listdir(courses_dir):
+            item_path = os.path.join(courses_dir, item)
+            if os.path.isdir(item_path):
+                index_path = os.path.join(item_path, 'index.html')
+                data_path = os.path.join(item_path, 'data.json')
+                if os.path.exists(index_path) or os.path.exists(data_path):
+                    course_folders.append(item)
 
-        existing_ids = set(c.uid for c in Course.query.all())
+        # Get existing course UIDs
+        existing_courses = {c.uid: c for c in Course.query.all()}
 
         new_count = 0
+        updated_count = 0
+
+        # Process each course folder
         for folder in course_folders:
-            uid = hashlib.md5(folder.encode()).hexdigest()
-            if uid not in existing_ids:
+            course_path = os.path.join(courses_dir, folder)
+            data_json_path = os.path.join(course_path, 'data.json')
+
+            # Default course info
+            course_info = {
+                'uid': folder,
+                'title': folder.replace('-', ' ').replace('_', ' '),
+                'path': f"{folder}/index.html",
+                'description': '',
+                'categories': '',
+            }
+
+            # Parse data.json if available (MIT OCW courses)
+            if os.path.exists(data_json_path) and os.path.isfile(data_json_path):
+                try:
+                    with open(data_json_path, 'r', encoding='utf-8') as f:
+                        data = json.load(f)
+
+                    # Extract instructors
+                    instructors = data.get('instructors', [])
+                    instructor_names = []
+                    for instructor in instructors:
+                        if 'title' in instructor and instructor['title']:
+                            instructor_names.append(instructor['title'])
+                        else:
+                            first = instructor.get('first_name', '')
+                            last = instructor.get('last_name', '')
+                            if first or last:
+                                instructor_names.append(f"{first} {last}".strip())
+
+                    # Extract topics/categories
+                    topics = data.get('topics', [])
+                    categories = set()
+                    if topics:
+                        for topic_path in topics:
+                            if isinstance(topic_path, list):
+                                categories.update(topic_path)
+
+                    # Handle thumbnail
+                    thumbnail = None
+                    image_src = data.get('image_src', '')
+                    if image_src:
+                        if image_src.startswith('./'):
+                            thumbnail = f"{folder}/{image_src[2:]}"
+                        else:
+                            thumbnail = f"{folder}/{image_src}"
+
+                    # Update course info with MIT OCW data
+                    course_info.update({
+                        'title': data.get('course_title', folder),
+                        'description': data.get('course_description', ''),
+                        'instructor': ', '.join(instructor_names) if instructor_names else None,
+                        'course_number': data.get('primary_course_number', ''),
+                        'term': data.get('term', ''),
+                        'year': data.get('year', ''),
+                        'level': ', '.join(data.get('level', [])),
+                        'department': ', '.join(data.get('department_numbers', [])),
+                        'categories': ', '.join(sorted(categories)) if categories else '',
+                        'thumbnail': thumbnail,
+                        'learning_resources': json.dumps(data.get('learning_resource_types', [])),
+                    })
+
+                except Exception as e:
+                    current_app.logger.warning(f"Failed to parse data.json for {folder}: {e}")
+
+            # Create or update course in database
+            if folder in existing_courses:
+                # Update existing course
+                course = existing_courses[folder]
+                for key, value in course_info.items():
+                    setattr(course, key, value)
+                updated_count += 1
+            else:
+                # Create new course
+                course = Course(**course_info)
+                db.session.add(course)
                 new_count += 1
+
+        # Commit all changes to database
+        db.session.commit()
 
         return jsonify({
             'total': len(course_folders),
             'new': new_count,
-            'existing': len(course_folders) - new_count
+            'existing': updated_count,
+            'message': f'Successfully imported {new_count} new courses and updated {updated_count} existing courses'
         })
 
     except Exception as e:
+        db.session.rollback()
+        current_app.logger.error(f"Failed to scan courses: {e}")
         return jsonify({'error': str(e)}), 500
 
 

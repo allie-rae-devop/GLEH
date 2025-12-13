@@ -85,6 +85,9 @@ services:
       CALIBRE_WEB_URL: ${CALIBRE_WEB_URL:-http://calibre-web:8083}
       # External URL for browser access (covers and reader)
       CALIBRE_WEB_EXTERNAL_URL: ${CALIBRE_WEB_EXTERNAL_URL:-http://localhost:8083}
+      # Optional authentication credentials for OPDS feed access
+      CALIBRE_WEB_USERNAME: ${CALIBRE_WEB_USERNAME:-}
+      CALIBRE_WEB_PASSWORD: ${CALIBRE_WEB_PASSWORD:-}
 
       # Security
       SECRET_KEY: ${SECRET_KEY:-change_me_in_production}
