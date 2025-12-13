@@ -1017,22 +1017,6 @@ def serve_avatar(filename):
         return send_from_directory(os.path.join(app.static_folder, 'avatars'), 'default_avatar.svg')
 
 # --- Ebook Reader Routes ---
-# MIGRATED TO CALIBRE-WEB: Custom ebook reader replaced by Calibre-Web with Nginx SSO
-
-@app.route('/reader/<uid>')
-def ebook_reader(uid):
-    """Redirect old ebook reader URLs to Calibre-Web"""
-    # For now, redirect to Calibre-Web home
-    # TODO: Map ebook UID to Calibre book ID for direct book linking
-    return redirect('/calibre/')
-
-# DEPRECATED: Reading progress now handled by Calibre-Web natively
-# Removed routes - reading progress is managed by Calibre-Web's built-in system
-
-# DEPRECATED: Ebook file serving now handled by Calibre-Web
-# Removed 200+ lines of custom EPUB parsing, ZIP file handling, and MIME type detection
-# Calibre-Web provides superior ebook serving with proper caching, format conversion, etc.
-
 # --- Main Execution ---
 if __name__ == '__main__':
     env = os.environ.get('FLASK_ENV', 'development')

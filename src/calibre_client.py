@@ -226,9 +226,10 @@ class CalibreWebClient:
             book_id: Calibre book ID
 
         Returns:
-            URL to Calibre-Web reader (uses external URL for browser access)
+            URL to Calibre-Web reader (proxied through nginx for SSO/guest access)
         """
-        return f"{self.external_url}/read/{book_id}/epub"
+        # Use nginx proxy path for SSO and guest access support
+        return f"/calibre-web/read/{book_id}/epub"
 
     def _parse_opds_feed(self, root: ET.Element) -> List[Dict]:
         """
