@@ -3,8 +3,8 @@
 ### 1. Clone the Repository
 
 ```bash
-git clone <your-repo-url> /opt/gleh
-cd /opt/gleh
+git clone https://github.com/allie-rae-devop/GLEH
+cd GLEH/docker/
 ```
 
 ### 2. Configure Environment
@@ -55,7 +55,49 @@ docker compose ps
 docker exec edu-web python scripts/init_database.py
 ```
 
-### 6. Access the Application
+### 6. Upload Content (Courses and Ebooks)
+
+#### 6.1. Upload Content via FTP/SFTP
+
+Use your preferred FTP/SFTP client (FileZilla, WinSCP, etc.) to upload content to:
+  ```bash
+  cd ~
+  mkdir upload/courses/
+  mkdir upload/books/
+  cd upload/
+   
+- **Course materials** (MIT OCW, etc.) → `/home/(your_user)/courses/`
+- **Ebooks (epub, pdf, mobi)** → `/home/your_user)/books/`
+
+#### 6.2. Copy Courses into Docker Volume
+
+```bash
+docker cp courses/. edu-web:/app/data/courses/
+```
+
+Log into the admin panel of the main app a http://YOUR_IP:3080, go to the admin panel and under the courses tab hit scan courses and generate thumbnail.
+
+#### 6.3. Import Ebooks into Calibre
+
+Calibre manages its own database, so books must be imported through Calibre rather than copied directly.
+
+```bash
+# Create ingress folder for Calibre to import from
+docker exec edu-calibre mkdir -p /config/ingress
+
+# Copy books to ingress folder
+docker cp books/. edu-calibre:/config/ingress/
+
+# Access Calibre Desktop to import books:
+# 1. Open: https://YOUR_IP:3443
+# 2. Login (Username: abc, Password: from .env)
+# 3. Click "Add books"
+# 4. Navigate to /config/ingress
+# 5. Select all books and import
+# 6. Calibre will organize them and update the database automatically
+```
+
+### 7. Access the Application
 
 - **GLEH Web App**: http://YOUR_IP:3080
 - **Admin Login**: admin / admin123 (⚠️ CHANGE THIS!)
