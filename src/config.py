@@ -117,13 +117,14 @@ class ProductionConfig(Config):
 
     # Session Security - Production Hardening (OWASP A02:2021, A07:2021)
     # Enforce HTTPS-only transmission (prevents MitM session hijacking)
-    SESSION_COOKIE_SECURE = True
+    # Allow override via SESSION_COOKIE_SECURE env var for HTTP deployments
+    SESSION_COOKIE_SECURE = os.environ.get('SESSION_COOKIE_SECURE', 'true').lower() == 'true'
     # Prevent JavaScript access (already set in base, reinforced here)
-    SESSION_COOKIE_HTTPONLY = True
+    SESSION_COOKIE_HTTPONLY = os.environ.get('SESSION_COOKIE_HTTPONLY', 'true').lower() == 'true'
     # CSRF protection (already set in base, reinforced here)
-    SESSION_COOKIE_SAMESITE = 'Lax'
+    SESSION_COOKIE_SAMESITE = os.environ.get('SESSION_COOKIE_SAMESITE', 'Lax')
     # 1-hour timeout (least privilege principle)
-    PERMANENT_SESSION_LIFETIME = 3600
+    PERMANENT_SESSION_LIFETIME = int(os.environ.get('PERMANENT_SESSION_LIFETIME', '3600'))
 
 
 class TestingConfig(Config):
