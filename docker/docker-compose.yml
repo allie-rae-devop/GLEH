@@ -88,7 +88,7 @@ services:
 
       # Security
       SECRET_KEY: ${SECRET_KEY:-change_me_in_production}
-      SESSION_COOKIE_SECURE: "true"
+      SESSION_COOKIE_SECURE: ${SESSION_COOKIE_SECURE:-false}
       SESSION_COOKIE_HTTPONLY: "true"
       SESSION_COOKIE_SAMESITE: "Lax"
 
