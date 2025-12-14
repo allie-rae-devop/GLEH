@@ -49,8 +49,13 @@ async function init() {
         });
     }
 
-    // Load profile data
-    await loadProfile();
+    // Load profile data (don't let this block initialization)
+    try {
+        await loadProfile();
+    } catch (error) {
+        console.error('Failed to load profile during init:', error);
+        // Continue with initialization even if profile loading fails
+    }
 
     // Edit profile modal handlers
     setupProfileEditor();
