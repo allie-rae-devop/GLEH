@@ -4,7 +4,7 @@
 
 ```bash
 git clone https://github.com/allie-rae-devop/GLEH
-cd GLEH/docker/
+cd GLEH/
 ```
 
 ### 2. Configure Environment
@@ -12,7 +12,7 @@ cd GLEH/docker/
 ```bash
 # Copy template and edit with your settings
 cp docker/.env.template docker/.env
-nano .env
+nano docker.env
 ```
 
 **Important variables to change:**
@@ -42,8 +42,6 @@ This creates:
 # Make sure you're in the docker/ directory
 docker compose up -d
 ```
-
-**Note:** Use `docker compose` (with a space), not `docker-compose` (hyphen). The hyphenated version is deprecated.
 
 ### 5. Initialize Database
 
@@ -92,14 +90,14 @@ docker cp books/. edu-calibre:/config/ingress/
 # 1. Open: https://YOUR_IP:3443
 # 2. Login (Username: abc, Password: from .env)
 # 3. Click "Add books"
-# 4. Navigate to /config/ingress
+# 4. Navigate to by going upt two directories and choosing /config/ingress
 # 5. Select all books and import
 # 6. Calibre will organize them and update the database automatically
 ```
 
 ### 7. Access the Application
 
-- **GLEH Web App**: http://YOUR_IP:3080
+
 - **Admin Login**: admin / admin123 (⚠️ CHANGE THIS!)
 - **Calibre Desktop**: https://YOUR_IP:3443 (Username: `abc`, Password: from `CALIBRE_PASSWORD` in .env)
 - **Calibre-Web**: http://YOUR_IP:8083
@@ -132,7 +130,6 @@ docker cp books/. edu-calibre:/config/ingress/
 
 5. **Enable Guest Access:**
    - Go to: "Admin" → "Basic Configuration" → "Feature Configuration"
-   - Enable "Public Registration"
    - Enable "Anonymous Browsing"
    - Click "Save"
 
@@ -167,17 +164,6 @@ docker cp books/. edu-calibre:/config/ingress/
 - If books don't appear on GLEH homepage, verify Calibre-Web credentials are set in `.env` file
 - If guest access doesn't work, verify Guest user has "Allow Read Books" permission
 - If SSO doesn't work, verify reverse proxy header is set to `X-Remote-User`
-
----
-
-## Service URLs
-
-| Service | Development | Docker Stack | Production |
-|---------|-------------|--------------|------------|
-| GLEH Web App | localhost:5000 | localhost | your-domain.com |
-| PostgreSQL  | - | localhost:5432 | (internal) |
-| Calibre GUI | localhost:8080 | localhost:8080 | (internal) |
-| Calibre-Web | localhost:8083 | localhost:8083 | (internal) |
 
 ---
 

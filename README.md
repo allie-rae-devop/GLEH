@@ -1,415 +1,299 @@
 # GLEH - Gammons Landing Educational Hub
 
-A production-ready, self-hosted educational platform for managing courses and e-books with integrated ebook library management.
+[![Release](https://img.shields.io/badge/release-v1.0-blue.svg)](https://github.com/allie-rae-devop/GLEH/releases)
+[![Docker](https://img.shields.io/badge/docker-ready-brightgreen.svg)](https://www.docker.com/)
+[![License](https://img.shields.io/badge/license-MIT-green.svg)](LICENSE)
+[![Python](https://img.shields.io/badge/python-3.11-blue.svg)](https://www.python.org/)
 
-**Status:** 🟢 Production Ready - v2.0
-**Last Updated:** December 12, 2024
-**Version:** 2.0
-
----
-
-## What is GLEH?
-
-GLEH is a self-hosted learning management system that provides:
-
-- **Course Management** - Host and deliver video-based courses with progress tracking
-- **E-Book Library** - Integrated Calibre-Web OPDS feed for ebook management
-- **User Profiles** - Track learning progress, take notes, and manage bookmarks
-- **Admin Panel** - Comprehensive admin interface for content and user management
-
-**Perfect for:** Home labs, educational institutions, personal learning environments, or anyone who wants to self-host their educational content.
+**🎉 Public Demo Now Available:** [LINK TO PUBLIC DEMO]
 
 ---
 
-## Quick Start
+## 🤖 AI Acknowledgment & Origin Story
+
+This project began as an "AI vibe coding" experiment—a personal challenge to see what could be built through conversational prompting with an AI assistant.
+
+**The Original Intent:** I needed a simple internal tool to organize and manage my paid and copyrighted educational content, particularly courses from MIT OpenCourseWare and various technical textbooks. What started as a basic script to ingest and catalog these materials quickly evolved into something much larger.
+
+**The Evolution:** As the project grew, it transformed from a quick utility into a passion project and a technical proving ground. The question became: *Could a full-stack web application—complete with database design, API architecture, frontend UI, Docker orchestration, and production deployment—be built, debugged, and refined almost entirely through AI-assisted development?*
+
+**The Answer:** You're looking at it.
+
+**Credit Where Credit is Due:** This application was built in partnership with **Claude AI** (Anthropic), which served as the primary coding partner throughout the entire development lifecycle—from initial architecture decisions to debugging production deployment issues on a Raspberry Pi.
+
+This README marks the official 1.0 release. The experiment worked.
+
+---
+
+![Main Dashboard](assets/main.png)
+
+---
+
+## About GLEH
+
+**GLEH** (Gammons Landing Educational Hub) is a self-hosted learning management system designed for individuals and small institutions who want complete control over their educational content. Built with a Docker-first architecture, GLEH combines course management, e-book library integration, and user progress tracking into a single, cohesive platform.
+
+### Key Features
+
+**📚 Course Management**
+
+- Host unlimited video-based courses with organized module structure
+- Automatic course scanning and thumbnail generation
+- Progress tracking with completion percentages
+- Student note-taking during video playback
+- Admin panel for course upload, organization, and deletion
+
+**📖 Integrated E-Book Library**
+
+- Full Calibre and Calibre-Web integration via OPDS feed
+- Support for EPUB, PDF, MOBI, and other ebook formats
+- Built-in EPUB reader with persistent reading progress
+- Cover image display with automatic thumbnail generation
+- Guest access support for public book browsing
+
+**👤 User Management**
+
+- Role-based access control (Admin/Student)
+- Individual user profiles with learning history
+- Bookmark management and course enrollment tracking
+- Single sign-on (SSO) integration with Calibre-Web
+- Batch user creation for classrooms
+
+**🔧 Administration Panel**
+
+- Five-tab admin interface (Dashboard, Courses, Users, Diagnostics, About)
+- Real-time system health monitoring
+- Log viewer with filtering capabilities
+- Environment variable editor
+- Self-healing diagnostics for common issues
+- WYSIWYG editor for About page content
+
+**🐳 Production-Ready Infrastructure**
+
+- Docker Compose orchestration with five containerized services
+- Nginx reverse proxy with intelligent rate limiting
+- PostgreSQL database with automated backups
+- Health checks and automatic container restart policies
+- Resource limits and network isolation
+
+---
+
+## Credits
+
+**MIT OpenCourseWare:** This project was inspired by and designed around organizing content from [MIT OpenCourseWare](https://ocw.mit.edu/), a web-based publication of virtually all MIT course content. MIT OCW is open and available to the world and is a permanent MIT activity. We are grateful for their commitment to open education and the free sharing of knowledge.
+
+**Calibre & Calibre-Web:** E-book management powered by [Calibre](https://calibre-ebook.com/) and [Calibre-Web](https://github.com/janw/calibre-web).
+
+---
+
+## Installation & Usage
 
 ### Prerequisites
 
-- Docker and Docker Compose installed
-- 2GB RAM minimum
-- 10GB disk space
+- **Docker & Docker Compose** - [Install Docker](https://docs.docker.com/get-docker/)
+- **Minimum System Requirements:**
+  - 2 CPU cores
+  - 4GB RAM
+  - 20GB disk space
+- **Operating System:** Linux, macOS, Windows (with WSL2), or Raspberry Pi OS
 
-### Deployment
+---
+
+### 1. Clone the Repository
 
 ```bash
-# 1. Clone the repository
-git clone https://github.com/your-org/GLEH.git
-cd GLEH
+git clone https://github.com/allie-rae-devop/GLEH
+cd GLEH/
+```
 
-# 2. Configure environment
-cd docker
-cp .env.template .env
-nano .env  # Set your passwords
+### 2. Configure Environment
 
-# 3. Generate SSL certificates (for Calibre Desktop)
-cd nginx
+```bash
+# Copy template and edit with your settings
+cp docker/.env.template docker/.env
+nano docker/.env
+```
+
+**Important variables to change:**
+
+- `SECRET_KEY` - Generate a random secret key for Flask sessions
+- `POSTGRES_PASSWORD` - Set a strong database password
+- `CALIBRE_PASSWORD` - Set password for Calibre Desktop access
+
+### 3. Generate SSL Certificates
+
+**Required for Calibre Desktop HTTPS access:**
+
+```bash
+cd docker/nginx
 bash generate_ssl.sh
 cd ..  # Back to docker/ directory
+```
 
-# 4. Start all services
+This creates self-signed SSL certificates for Calibre Desktop. Your browser will show a security warning—click "Advanced" and "Accept the Risk" to proceed.
+
+### 4. Start the Stack
+
+```bash
+# Make sure you're in the docker/ directory
 docker compose up -d
+```
 
-# 5. Initialize database
+This will start five services:
+
+- `edu-web` - Flask application server
+- `edu-postgres` - PostgreSQL database
+- `edu-nginx` - Nginx reverse proxy
+- `edu-calibre` - Calibre Desktop (ebook management)
+- `edu-calibre-web` - Calibre-Web (web interface for ebooks)
+
+### 5. Initialize Database
+
+```bash
+# Wait for services to be healthy
+docker compose ps
+
+# Initialize database and create admin user
 docker exec edu-web python scripts/init_database.py
-
-# 6. Access the application
-# Main App: http://YOUR_IP:3080
-# Calibre Desktop: https://YOUR_IP:3443 (username: abc, password: from .env)
-# Admin Login: admin / admin123 (⚠️ CHANGE ALL DEFAULT PASSWORDS!)
 ```
 
-**Important:** Replace `YOUR_IP` with your server's IP address.
+### 6. Upload Content (Courses and Ebooks)
 
-**⚠️ Calibre Desktop:** You MUST use `https://YOUR_IP:3443` - Do NOT use port 8080.
+#### 6.1. Upload Content via FTP/SFTP
 
-That's it! For detailed deployment instructions, see [docker/DOCKER_DEPLOYMENT.md](docker/DOCKER_DEPLOYMENT.md).
+Use your preferred FTP/SFTP client (FileZilla, WinSCP, etc.) to upload content to your server:
 
----
-
-## Features
-
-### For Students
-
-- **Course Enrollment** - Browse and enroll in video-based courses
-- **Progress Tracking** - Automatic progress tracking with completion status
-- **Note Taking** - Take notes while watching courses
-- **E-Book Reader** - Read EPUBs and PDFs with persistent reading progress
-- **Personal Profile** - Manage your profile, view learning history
-
-### For Administrators
-
-- **Dashboard** - System overview with quick access to all services
-- **Course Management** - Upload, scan, delete, and manage course content
-- **User Management** - Full CRUD operations, password reset, seed test users
-- **Diagnostics** - System health monitoring, logs viewer, self-healing checks
-- **About Page Editor** - WYSIWYG editor for managing about content
-- **Environment Config** - Edit .env variables directly from web UI
-
-Full admin panel documentation: [docs/admin-panel-readme.md](docs/admin-panel-readme.md)
-
----
-
-## Architecture
-
-### Technology Stack
-
-**Backend:**
-- Flask 3.1.2 (Python web framework)
-- PostgreSQL 15 (Database)
-- SQLAlchemy (ORM)
-- Waitress (WSGI server)
-
-**Frontend:**
-- Bootstrap 5 (Dark theme)
-- EPUB.js (E-book reader)
-- Vanilla JavaScript
-
-**Infrastructure:**
-- Docker & Docker Compose
-- Nginx (Reverse proxy)
-- Calibre & Calibre-Web (Ebook management)
-
-### Service Architecture
-
-```
-┌─────────────────────────────────────────────────────┐
-│                   Web Browser                        │
-│         http://localhost:3080                        │
-└─────────────────────────────────────────────────────┘
-                        │
-                        ▼
-┌─────────────────────────────────────────────────────┐
-│         Nginx (edu-nginx) - Port 3080               │
-│  • Rate limiting                                    │
-│  • Static file serving                              │
-│  • Reverse proxy                                    │
-└─────────────────────────────────────────────────────┘
-                        │
-                        ▼
-┌─────────────────────────────────────────────────────┐
-│       Flask App (edu-web) - Port 5000               │
-│  • Authentication & sessions                        │
-│  • Course & user management                         │
-│  • API endpoints                                    │
-│  • Admin panel                                      │
-└─────────────────────────────────────────────────────┘
-         │                    │
-         ▼                    ▼
-┌──────────────────┐   ┌──────────────────┐
-│   PostgreSQL     │   │   Calibre-Web    │
-│  (edu-postgres)  │   │ (edu-calibre-web)│
-│   Port 5432      │   │   Port 8083      │
-└──────────────────┘   └──────────────────┘
+```bash
+# Create upload directories on your server
+cd ~
+mkdir -p upload/courses/
+mkdir -p upload/books/
+cd upload/
 ```
 
-### Docker Volumes
+Upload your files:
 
-All data is stored in Docker-managed volumes:
+- **Course materials** (MIT OCW, etc.) → `~/upload/courses/`
+- **Ebooks (EPUB, PDF, MOBI)** → `~/upload/books/`
 
-- **edu-postgres-data** - PostgreSQL database (users, courses, progress)
-- **edu-calibre-library** - Calibre ebook library and metadata
-- **edu-courses** - Course content (videos, HTML)
-- **edu-app-logs** - Application logs
+#### 6.2. Copy Courses into Docker Volume
 
----
-
-## Project Structure
-
-```
-GLEH/
-├── src/                       # Flask application source
-│   ├── app.py                 # Main Flask app
-│   ├── admin_api.py           # Admin panel endpoints
-│   ├── models.py              # Database models
-│   ├── calibre_client.py      # Calibre-Web OPDS integration
-│   └── config.py              # Configuration
-│
-├── templates/                 # Jinja2 HTML templates
-│   ├── admin.html             # Admin panel (5 tabs)
-│   ├── index.html             # Homepage
-│   ├── course.html            # Course player
-│   └── reader.html            # E-book reader
-│
-├── static/                    # CSS, JavaScript, images
-│   ├── css/
-│   ├── js/
-│   └── images/
-│
-├── scripts/                   # Utility scripts
-│   └── init_database.py       # Database initialization
-│
-├── docker/                    # Docker configuration
-│   ├── docker-compose.yml     # Service orchestration
-│   ├── Dockerfile             # Flask container
-│   ├── .env.template          # Environment template
-│   ├── deploy.sh              # Deployment script
-│   ├── status.sh              # Health check script
-│   ├── nginx/
-│   │   └── nginx.conf         # Nginx configuration
-│   └── DOCKER_DEPLOYMENT.md   # Deployment guide
-│
-├── docs/                      # Documentation
-│   └── admin-panel-readme.md  # Admin panel guide
-│
-└── README.md                  # This file
+```bash
+docker cp courses/. edu-web:/app/data/courses/
 ```
 
----
+Log into the admin panel at `http://YOUR_IP:3080/admin`, go to the Courses tab, and click "Scan Courses" and "Generate Thumbnails."
 
-## Configuration
+#### 6.3. Import Ebooks into Calibre
 
-All configuration is done via environment variables in `docker/.env.template`:
+Calibre manages its own database, so books must be imported through Calibre Desktop:
 
-```env
-# Ports
-NGINX_PORT=3080
-CALIBRE_PORT=8080
-CALIBRE_WEB_PORT=8083
+```bash
+# Create ingress folder for Calibre imports
+docker exec edu-calibre mkdir -p /config/ingress
 
-# Database
-DB_NAME=edu_db
-DB_USER=edu_user
-DB_PASSWORD=change_me_in_production
+# Copy books to ingress folder
+docker cp books/. edu-calibre:/config/ingress/
 
-# Flask
-FLASK_ENV=production
-SECRET_KEY=change_me_in_production
-
-# Calibre-Web Integration
-CALIBRE_WEB_URL=http://calibre-web:8083
-CALIBRE_WEB_EXTERNAL_URL=http://localhost:8083
-
-# Calibre-Web Authentication (optional)
-# If Calibre-Web requires authentication, set these credentials
-CALIBRE_WEB_USERNAME=admin
-CALIBRE_WEB_PASSWORD=admin123
+# Access Calibre Desktop to import books:
+# 1. Open: https://YOUR_IP:3443
+# 2. Login (Username: abc, Password: from .env CALIBRE_PASSWORD)
+# 3. Click "Add books"
+# 4. Navigate up two directories and choose /config/ingress
+# 5. Select all books and import
+# 6. Calibre will organize them and update the database automatically
 ```
 
-Copy `.env.template` to `.env` and customize for your deployment.
+### 7. Access the Application
 
----
+- **Main App:** `http://YOUR_IP:3080`
+- **Admin Panel:** `http://YOUR_IP:3080/admin`
+- **Calibre Desktop:** `https://YOUR_IP:3443` (Username: `abc`, Password: from `.env`)
+- **Calibre-Web:** `http://YOUR_IP:8083`
 
-## Administration
+**Default Admin Login:**
 
-### Access URLs
+- Username: `admin`
+- Password: `admin123`
 
-- **Main App**: http://YOUR_IP:3080
-- **Calibre Desktop**: https://YOUR_IP:3443 (Username: `abc`, Password: from `.env`)
-- **Calibre-Web**: http://YOUR_IP:8083
-- **Admin Panel**: http://YOUR_IP:3080/admin
+⚠️ **IMPORTANT:** Change the default password immediately after first login!
 
 **⚠️ CRITICAL - Calibre Desktop Access:**
-- ✅ **CORRECT URL:** `https://YOUR_IP:3443` (Nginx SSL proxy)
-- ❌ **WRONG - DO NOT USE:** Port 8080 (will show "HTTPS required" error)
-- Port 8080 is for internal container communication only
-- Your browser will show a security warning for the self-signed certificate - click "Advanced" and "Accept the Risk"
 
-### Default Credentials
+- ✅ **CORRECT:** `https://YOUR_IP:3443` (Nginx SSL proxy)
+- ❌ **WRONG:** Port 8080 (will show "HTTPS required" error)
+- Port 8080 is for internal Docker networking only
 
-- **Username**: admin
-- **Password**: admin123
+### 8. Configure Calibre-Web Settings
 
-⚠️ **IMPORTANT**: Change the default password immediately after first login!
+**IMPORTANT:** After first deployment, configure Calibre-Web to enable SSO and guest access.
 
-### Managing Content
+1. **Access Calibre-Web:** `http://YOUR_IP:8083`
 
-Content is stored in Docker-managed volumes. For remote deployments, use one of these methods to upload courses and ebooks:
+2. **Login with default credentials:**
+   - Username: `admin`
+   - Password: `admin123`
+   - ⚠️ Change this password immediately!
 
-#### Method 1: Docker CP (Recommended for Batch Uploads)
+3. **Navigate to Admin Panel:**
+   - Click your username (top right) → "Admin"
 
-Best for uploading multiple large files or folders to remote servers.
+4. **Enable Reverse Proxy Authentication:**
+   - Go to: "Admin" → "Basic Configuration" → "Feature Configuration"
+   - Find "Reverse Proxy Authentication"
+   - Set **Reverse Proxy Header Name:** `X-Remote-User`
+   - Click "Save"
 
-**Upload Courses:**
+5. **Enable Guest Access:**
+   - Go to: "Admin" → "Basic Configuration" → "Feature Configuration"
+   - Enable "Anonymous Browsing"
+   - Click "Save"
 
-```bash
-# 1. Copy files from local machine to server temp location
-scp -r /path/to/course_folder user@YOUR_IP:/tmp/course_upload
+6. **Configure Guest User Permissions:**
+   - Go to: "Admin" → "Edit Users" → Select "Guest" user
+   - Enable:
+     - ✅ Allow Browse
+     - ✅ Allow Read Books
+     - ✅ Allow Download
+     - ✅ Show Detail Random
+   - Click "Save"
 
-# 2. SSH to server
-ssh user@YOUR_IP
+7. **Enable E-Reader Features:**
+   - Go to: "Admin" → "Basic Configuration" → "Feature Configuration"
+   - Enable "E-Book Viewer"
+   - Enable "E-Book Conversion"
+   - Click "Save"
 
-# 3. Copy from temp to Docker volume
-docker cp /tmp/course_upload/. edu-web:/app/data/courses/
+8. **Point to Calibre Library:**
+   - Go to: "Admin" → "Basic Configuration" → "Database Configuration"
+   - Set "Database Path:" `/books/metadata.db`
+   - Click "Save" and restart when prompted
 
-# 4. Scan for new courses (optional - admin panel also has this button)
-docker exec edu-web python scripts/scan_courses.py
-
-# 5. Clean up temp files
-rm -rf /tmp/course_upload
-```
-
-**Upload E-books to Calibre:**
-
-```bash
-# 1. Copy ebook files to server temp location
-scp -r /path/to/ebooks/ user@YOUR_IP:/tmp/ebook_upload
-
-# 2. SSH to server
-ssh user@YOUR_IP
-
-# 3. Copy to Calibre library volume
-docker cp /tmp/ebook_upload/. edu-calibre:/config/Calibre\ Library/
-
-# 4. Clean up
-rm -rf /tmp/ebook_upload
-```
-
-#### Method 2: SFTP Mounting (Recommended for Individual Files)
-
-Best for one-off uploads or when using GUI tools like FileZilla.
-
-**Using FileZilla (Windows/Mac/Linux):**
-
-1. **Connect to Server:**
-   - File → Site Manager → New Site
-   - Protocol: SFTP
-   - Host: YOUR_IP
-   - Port: 22
-   - User: your_username
-   - Key file: your_private_key.ppk (if using key auth)
-
-2. **Upload Courses:**
-   - Navigate to `/tmp/uploads/` on remote server
-   - Upload course folders
-   - SSH to server and run:
-
-   ```bash
-   docker cp /tmp/uploads/course_name edu-web:/app/data/courses/
-   docker exec edu-web python scripts/scan_courses.py
-   rm -rf /tmp/uploads/course_name
-   ```
-
-3. **Upload E-books:**
-   - Upload ebook files to `/tmp/uploads/`
-   - SSH to server and run:
-
-   ```bash
-   docker cp /tmp/uploads/book.epub edu-calibre:/config/Calibre\ Library/
-   rm -rf /tmp/uploads/book.epub
-   ```
-
-#### Managing Users
-
-**Via Admin Panel:**
-1. Go to Admin Panel → Users tab
-2. Create, edit, or delete user accounts
-3. Reset passwords or seed test users
-
-Full guide: [docs/admin-panel-readme.md](docs/admin-panel-readme.md)
+9. **Verify Integration:**
+   - Go to GLEH homepage: `http://YOUR_IP:3080`
+   - You should see featured textbooks with cover images
+   - Click "Launch Book" - should open in reader (no login required for guests)
 
 ---
 
-## Deployment
+### Troubleshooting
 
-### Production Checklist
+For comprehensive troubleshooting, deployment guides, and advanced configuration, see the full documentation:
 
-Before deploying to production:
+**📖 [Full Deployment Guide & Troubleshooting](docker/DOCKER_DEPLOYMENT.md)**
 
-- [ ] Change `SECRET_KEY` to a strong random value
-- [ ] Change `DB_PASSWORD` to a strong password
-- [ ] Change default admin password (admin123)
-- [ ] Change `CALIBRE_PASSWORD`
-- [ ] Update `CALIBRE_WEB_EXTERNAL_URL` to your domain
-- [ ] Configure SSL certificates (optional)
-- [ ] Set up automated backups for Docker volumes
-- [ ] Configure firewall rules
+Common quick fixes:
 
-### Backup & Restore
-
+**Check service status:**
 ```bash
-# Backup PostgreSQL
-docker compose exec db pg_dump -U edu_user edu_db > backup.sql
-
-# Backup Calibre library
-docker run --rm -v edu-calibre-library:/source -v ./backups:/backup \
-  busybox tar czf /backup/calibre.tar.gz -C /source .
-
-# Backup Courses
-docker run --rm -v edu-courses:/source -v ./backups:/backup \
-  busybox tar czf /backup/courses.tar.gz -C /source .
+docker compose ps
 ```
 
-Full deployment guide: [docker/DOCKER_DEPLOYMENT.md](docker/DOCKER_DEPLOYMENT.md)
-
----
-
-## Updating
-
+**View logs:**
 ```bash
-# Pull latest code
-git pull
-
-# Rebuild and restart
-cd docker
-docker compose build
-docker compose up -d
-
-# Check status
-docker ps --filter "name=edu-"
+docker logs edu-web -f
+docker logs edu-nginx -f
 ```
-
----
-
-## Troubleshooting
-
-### Check Service Status
-
-```bash
-cd docker
-./status.sh    # Linux/Mac
-status.bat     # Windows
-```
-
-### View Logs
-
-```bash
-docker compose logs -f        # All services
-docker logs edu-web -f        # Flask app
-docker logs edu-nginx -f      # Nginx
-docker logs edu-postgres -f   # Database
-```
-
-### Common Issues
 
 **Database not initialized:**
 ```bash
@@ -422,88 +306,35 @@ docker compose down
 docker compose up -d
 ```
 
-**Port conflicts:**
-Edit `docker/.env` and change `NGINX_PORT=3080` to another port.
+---
+
+## Gallery
+
+![Course Launch Page](assets/course-launch.png)
+
+![User Profile](assets/user-profile.png)
+
+![Textbook Reader](assets/textbook.png)
+
+![Courses Page](assets/courses.png)
+
+![Admin Panel](assets/admin-panel.png)
 
 ---
 
-## Development
+## Support & Documentation
 
-### Local Development Setup
-
-```bash
-# Install dependencies
-pip install -r requirements.txt
-
-# Run Flask locally (development only)
-cd src
-flask run
-```
-
-### Testing
-
-```bash
-# Run tests
-pytest tests/ -v
-
-# With coverage
-pytest tests/ --cov=src --cov-report=html
-```
-
----
-
-## Changelog
-
-### December 12, 2024 - v2.0 Production Release ✅
-
-**Major Updates:**
-- Complete Admin Panel v2.0 with 5-tab interface
-- Docker-first deployment with edu-* naming convention
-- Removed deprecated MinIO storage
-- Production-ready with comprehensive documentation
-- Self-healing diagnostics and monitoring
-- Environment configuration editor
-
-**Documentation:**
-- [docker/DOCKER_DEPLOYMENT.md](docker/DOCKER_DEPLOYMENT.md) - Deployment guide
-- [docs/admin-panel-readme.md](docs/admin-panel-readme.md) - Admin panel guide
-
----
-
-## Contributing
-
-```bash
-# Fork the repository
-git clone https://github.com/your-username/GLEH.git
-
-# Create a feature branch
-git checkout -b feature/your-feature
-
-# Make changes and test
-docker compose up -d
-pytest tests/ -v
-
-# Commit and push
-git commit -m "Description of changes"
-git push origin feature/your-feature
-
-# Create a pull request
-```
+- **Issues & Bug Reports:** [GitHub Issues](https://github.com/allie-rae-devop/GLEH/issues)
+- **Full Deployment Guide:** [docker/DOCKER_DEPLOYMENT.md](docker/DOCKER_DEPLOYMENT.md)
+- **Admin Panel Documentation:** [docs/admin-panel-readme.md](docs/admin-panel-readme.md)
 
 ---
 
 ## License
 
-See LICENSE file for details.
+See [LICENSE](LICENSE) file for details.
 
 ---
 
-## Support
-
-- **Documentation**: [docker/DOCKER_DEPLOYMENT.md](docker/DOCKER_DEPLOYMENT.md)
-- **Admin Guide**: [docs/admin-panel-readme.md](docs/admin-panel-readme.md)
-- **Issues**: https://github.com/your-org/GLEH/issues
-
----
-
-**Built with ❤️ using Flask, Docker, and Calibre**
+**Built with Flask, Docker, PostgreSQL, and Calibre**
+**Developed in partnership with Claude AI**
