@@ -54,6 +54,9 @@ async function init() {
 
     // Edit profile modal handlers
     setupProfileEditor();
+
+    // Password change modal handlers
+    setupPasswordChange();
 }
 
 async function loadProfile() {
@@ -240,6 +243,85 @@ function setupProfileEditor() {
             // Close modal and reload profile
             bootstrap.Modal.getInstance(editModal).hide();
             await loadProfile();
+
+        } catch (error) {
+            errorDiv.textContent = error.message;
+            errorDiv.style.display = 'block';
+        }
+    });
+}
+
+function setupPasswordChange() {
+    const passwordModal = document.getElementById('changePasswordModal');
+    const savePasswordBtn = document.getElementById('save-password-btn');
+    const passwordForm = document.getElementById('change-password-form');
+    const currentPasswordInput = document.getElementById('current-password');
+    const newPasswordInput = document.getElementById('new-password');
+    const confirmPasswordInput = document.getElementById('confirm-password');
+    const errorDiv = document.getElementById('password-error');
+    const successDiv = document.getElementById('password-success');
+
+    // Reset form when modal opens
+    passwordModal.addEventListener('show.bs.modal', () => {
+        passwordForm.reset();
+        errorDiv.style.display = 'none';
+        successDiv.style.display = 'none';
+    });
+
+    // Handle password change
+    savePasswordBtn.addEventListener('click', async () => {
+        errorDiv.style.display = 'none';
+        successDiv.style.display = 'none';
+
+        const currentPassword = currentPasswordInput.value;
+        const newPassword = newPasswordInput.value;
+        const confirmPassword = confirmPasswordInput.value;
+
+        // Client-side validation
+        if (!currentPassword || !newPassword || !confirmPassword) {
+            errorDiv.textContent = 'All fields are required';
+            errorDiv.style.display = 'block';
+            return;
+        }
+
+        if (newPassword.length < 6) {
+            errorDiv.textContent = 'New password must be at least 6 characters long';
+            errorDiv.style.display = 'block';
+            return;
+        }
+
+        if (newPassword !== confirmPassword) {
+            errorDiv.textContent = 'New passwords do not match';
+            errorDiv.style.display = 'block';
+            return;
+        }
+
+        try {
+            const response = await fetchWithCsrf('/api/profile/change-password', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    current_password: currentPassword,
+                    new_password: newPassword,
+                    confirm_password: confirmPassword
+                })
+            });
+
+            const data = await response.json();
+
+            if (!response.ok) {
+                throw new Error(data.error || 'Failed to change password');
+            }
+
+            // Success!
+            successDiv.textContent = 'Password changed successfully! You can now use your new password to login.';
+            successDiv.style.display = 'block';
+            passwordForm.reset();
+
+            // Close modal after 2 seconds
+            setTimeout(() => {
+                bootstrap.Modal.getInstance(passwordModal).hide();
+            }, 2000);
 
         } catch (error) {
             errorDiv.textContent = error.message;

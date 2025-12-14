@@ -992,6 +992,50 @@ def upload_avatar():
         'avatar_url': url_for('serve_avatar', filename=filename)
     })
 
+@app.route('/api/profile/change-password', methods=['POST'])
+@login_required
+def change_password():
+    """Change user password with current password verification"""
+    data = request.get_json()
+
+    # Validate required fields
+    if not data or not all(k in data for k in ['current_password', 'new_password', 'confirm_password']):
+        return jsonify({'error': 'Missing required fields'}), 400
+
+    current_password = data['current_password']
+    new_password = data['new_password']
+    confirm_password = data['confirm_password']
+
+    # Verify current password
+    if not current_user.check_password(current_password):
+        return jsonify({'error': 'Current password is incorrect'}), 401
+
+    # Validate new password
+    if len(new_password) < 6:
+        return jsonify({'error': 'New password must be at least 6 characters long'}), 400
+
+    # Verify passwords match
+    if new_password != confirm_password:
+        return jsonify({'error': 'New passwords do not match'}), 400
+
+    # Don't allow same password
+    if current_password == new_password:
+        return jsonify({'error': 'New password must be different from current password'}), 400
+
+    try:
+        # Update password
+        current_user.set_password(new_password)
+        db.session.commit()
+
+        log.info(f"Password changed successfully for user {current_user.username}")
+
+        return jsonify({'message': 'Password changed successfully'})
+
+    except Exception as e:
+        db.session.rollback()
+        log.error(f"Failed to change password for user {current_user.username}: {e}")
+        return jsonify({'error': 'Failed to change password'}), 500
+
 @app.route('/avatars/<filename>')
 def serve_avatar(filename):
     """Serve avatar from local filesystem (static/avatars directory)"""
