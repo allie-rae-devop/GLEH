@@ -25,7 +25,7 @@ This README marks the official 1.0 release. The experiment worked.
 
 ---
 
-![Main Dashboard](assets/main.png)
+![Main Dashboard](assets/main-dash.png)
 
 ---
 
@@ -310,15 +310,27 @@ docker compose up -d
 
 ## Gallery
 
+![Courses Catalog](assets/course-cat.png)
+
+![Books Catalog](assets/book-cat.png)
+
 ![Course Launch Page](assets/course-launch.png)
 
-![User Profile](assets/user-profile.png)
+![Book Launch Page](assets/book-launch.png)
 
-![Textbook Reader](assets/textbook.png)
+![Course Player](assets/course.png)
 
-![Courses Page](assets/courses.png)
+![Book Reader](assets/book.png)
 
-![Admin Panel](assets/admin-panel.png)
+![Admin Panel - Dashboard](assets/admin-1.png)
+
+![Admin Panel - Courses](assets/admin-2.png)
+
+![Admin Panel - Users](assets/admin-3.png)
+
+![Admin Panel - Diagnostics](assets/admin-4.png)
+
+![Admin Panel - About (WIP)](assets/admin-5-WIP.png)
 
 ---
 
