@@ -5,7 +5,7 @@
 [![License](https://img.shields.io/badge/license-MIT-green.svg)](LICENSE)
 [![Python](https://img.shields.io/badge/python-3.11-blue.svg)](https://www.python.org/)
 
-Public demo: https://portfollio.gammonslanding.com/
+Public demo: https://portfolio.gammonslanding.com/
 
 ---
 
